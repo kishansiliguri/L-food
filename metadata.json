@@ -1,0 +1,5 @@
+{
+  "name": "Krishna Food",
+  "description": "A simple Node.js + Express food ordering website for Krishna Food restaurant.",
+  "requestFramePermissions": []
+}

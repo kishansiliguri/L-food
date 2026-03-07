@@ -1,0 +1,15 @@
+{
+  "name": "krishna-food",
+  "version": "1.0.0",
+  "description": "Krishna Food Ordering Website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "echo 'No build needed'",
+    "lint": "echo 'No lint needed'"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
