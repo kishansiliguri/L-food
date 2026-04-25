@@ -1,521 +1,574 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-
-// ─── Web Audio Bell ───────────────────────────────────────────────────────────
-function createBell(ctx) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain); gain.connect(ctx.destination);
-  osc.type = "sine"; osc.frequency.setValueAtTime(880, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.4);
-  gain.gain.setValueAtTime(0.6, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.6);
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>दुकान ऑर्डर पैनल</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700;800;900&family=DM+Mono:wght@500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#07090f;--surface:#0d1120;--border:rgba(255,255,255,0.07);
+  --gold:#f59e0b;--blue:#38bdf8;--green:#4ade80;--red:#f87171;
+  --text:#f1f5f9;--muted:#475569;--dim:#1e293b;
 }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--dim);border-radius:4px}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatINR = (n) => "₹" + n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+/* ── Animations ── */
+@keyframes bellRing{0%,100%{transform:rotate(-18deg) scale(1.1)}50%{transform:rotate(18deg) scale(1.1)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.93)}}
+@keyframes glow{0%,100%{box-shadow:0 0 14px rgba(245,158,11,.18)}50%{box-shadow:0 0 36px rgba(245,158,11,.5)}}
+@keyframes slideDown{from{transform:translateY(-18px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+@keyframes spin{to{stroke-dashoffset:0}}
+@keyframes ringIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
 
-function timeAgo(ts) {
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 10) return "अभी";
-  if (s < 60) return `${s} सेकंड पहले`;
-  return `${Math.floor(s / 60)} मिनट पहले`;
+/* ── Header ── */
+#header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:13px 20px;border-bottom:1px solid var(--border);
+  background:rgba(255,255,255,0.025);flex-shrink:0;
 }
-
-function formatCountdown(sec) {
-  if (sec <= 0) return "00:00";
-  const m = Math.floor(sec / 60), s = sec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo-title{font-size:18px;font-weight:900;letter-spacing:-.4px}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:1px}
+#newBadge{background:var(--gold);color:#000;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:800;display:none;align-items:center;justify-content:center;animation:pulse 1.2s ease-in-out infinite}
+#newBadge.show{display:flex}
+#testBtn{
+  background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#000;
+  padding:9px 18px;border-radius:10px;font-size:13px;font-weight:800;
+  cursor:pointer;font-family:inherit;transition:transform .15s;
 }
+#testBtn:hover{transform:scale(1.04)}
 
-// ─── Seed Data ────────────────────────────────────────────────────────────────
-const SEED = [
-  {
-    id: "ORD-001", customer: "Rahul Sharma", avatar: "RS", phone: "98765-43210",
-    timestamp: Date.now() - 60000, address: "टेबल 4", status: "new",
-    items: [{ name: "पनीर बटर मसाला", qty: 2, price: 280 }, { name: "बटर नान", qty: 4, price: 45 }],
-    total: 740, note: "Extra मक्खन", etaSec: null, acceptedAt: null,
-  },
-  {
-    id: "ORD-002", customer: "Priya Gupta", avatar: "PG", phone: "87654-32109",
-    timestamp: Date.now() - 300000, address: "होम डिलीवरी", status: "preparing",
-    items: [{ name: "चिकन बिरयानी", qty: 1, price: 320 }, { name: "रायता", qty: 1, price: 60 }],
-    total: 380, note: "", etaSec: 18 * 60, acceptedAt: Date.now() - 120000,
-  },
+/* ── Stats bar ── */
+#statsBar{display:flex;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0}
+.stat{flex:1;padding:10px 0;text-align:center;border-right:1px solid rgba(255,255,255,0.04)}
+.stat:last-child{border-right:none}
+.stat-num{font-size:20px;font-weight:900;font-family:'DM Mono',monospace}
+.stat-label{font-size:10px;color:var(--muted);font-weight:700;margin-top:1px;letter-spacing:.5px}
+
+/* ── Body layout ── */
+#body{flex:1;display:flex;overflow:hidden}
+
+/* ── Order List ── */
+#orderList{width:295px;border-right:1px solid var(--border);overflow-y:auto;padding:10px}
+.order-card{
+  background:rgba(255,255,255,0.025);border:1px solid var(--border);
+  border-radius:13px;padding:12px 14px;margin-bottom:9px;cursor:pointer;
+  transition:all .2s;
+}
+.order-card:hover{background:rgba(255,255,255,0.04)}
+.order-card.selected{background:rgba(245,158,11,0.07);border-color:rgba(245,158,11,.3)}
+.order-card.is-new{animation:glow 1.6s ease-in-out infinite;border-color:rgba(245,158,11,.25)}
+.oc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.oc-name{font-weight:700;font-size:13px}
+.oc-sub{color:var(--muted);font-size:11px;margin-top:2px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.oc-bot{display:flex;justify-content:space-between;align-items:center}
+.oc-total{color:var(--gold);font-weight:900;font-size:14px;font-family:'DM Mono',monospace}
+.oc-time{color:var(--muted);font-size:11px}
+.oc-eta{font-size:12px;font-weight:700;font-family:'DM Mono',monospace}
+
+/* ── Detail Panel ── */
+#detail{flex:1;overflow-y:auto;padding:22px}
+#detail-inner{max-width:490px}
+.detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.detail-id{color:var(--gold);font-size:28px;font-weight:900;letter-spacing:-1px}
+.detail-label{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.detail-box{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.detail-box-title{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:11px}
+.item-row{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;background:rgba(255,255,255,0.03);border-radius:9px;margin-bottom:5px;border:1px solid rgba(255,255,255,0.05)}
+.item-qty{background:rgba(245,158,11,.15);color:var(--gold);width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-right:10px;flex-shrink:0}
+.item-name{color:#cbd5e1;font-size:13px}
+.item-price{color:#94a3b8;font-size:13px;font-family:'DM Mono',monospace}
+.divider{height:1px;background:rgba(255,255,255,0.07);margin:11px 0}
+.total-row{display:flex;justify-content:space-between;align-items:center}
+.total-label{color:var(--muted);font-weight:600;font-size:14px}
+.total-val{color:var(--gold);font-weight:900;font-size:21px;font-family:'DM Mono',monospace}
+.note-box{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.22);border-radius:12px;padding:10px 14px;margin-bottom:12px}
+.note-title{color:#fbbf24;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.note-text{color:#cbd5e1;font-size:13px}
+.eta-box{background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.22);border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.eta-label{color:var(--blue);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px}
+.eta-info{color:#cbd5e1;font-size:13px}
+.eta-tag{color:var(--blue);font-size:12px;font-weight:800}
+.action-btn{width:100%;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform .15s;margin-bottom:8px}
+.action-btn:hover{transform:scale(1.02)}
+.btn-ready{background:linear-gradient(135deg,#4ade80,#16a34a);color:#000}
+.btn-done{background:linear-gradient(135deg,#38bdf8,#0284c7);color:#000}
+.detail-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:14px}
+
+/* ── Customer Panel ── */
+#customerPanel{width:285px;background:#050810;border-left:1px solid var(--border);display:flex;flex-direction:column}
+#cp-header{padding:14px 16px 11px;border-bottom:1px solid var(--border)}
+.cp-title{color:var(--green);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.cp-sub{color:#334155;font-size:11px;margin-top:2px}
+#cp-list{flex:1;overflow-y:auto;padding:12px}
+.cp-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;margin-bottom:12px}
+.cp-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.cp-name{color:var(--text);font-weight:700;font-size:13px}
+.cp-id{color:var(--muted);font-size:11px}
+.cp-ring-wrap{display:flex;justify-content:center;margin:10px 0}
+.cp-ready-box{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);border-radius:10px;padding:10px;text-align:center}
+.cp-ready-icon{font-size:26px}
+.cp-ready-text{color:var(--green);font-weight:700;font-size:13px;margin-top:4px}
+.cp-divider{height:1px;background:rgba(255,255,255,0.05);margin:10px 0}
+.cp-total-row{display:flex;justify-content:space-between;align-items:center}
+.cp-total-label{color:var(--muted);font-size:12px}
+.cp-total-val{color:var(--gold);font-weight:900;font-size:14px;font-family:'DM Mono',monospace}
+.cp-empty{color:#1e293b;font-size:13px;text-align:center;margin-top:50px}
+
+/* ── Alert Overlay ── */
+#alertOverlay{position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:999;display:none;align-items:center;justify-content:center;animation:fadeIn .2s ease}
+#alertOverlay.show{display:flex}
+#alertBox{
+  background:#0d1528;border:2px solid var(--gold);border-radius:22px;
+  padding:28px;width:360px;max-width:94vw;
+  box-shadow:0 0 70px rgba(245,158,11,.28);
+  animation:ringIn .3s ease;
+}
+#alertBox.shake{animation:shake .5s ease}
+.alert-bell{text-align:center;margin-bottom:18px}
+.alert-bell-icon{font-size:52px;display:inline-block}
+.alert-bell-icon.ring{animation:bellRing .55s ease-in-out infinite}
+.alert-title{color:var(--gold);font-size:21px;font-weight:900;margin-top:8px}
+.alert-sub{color:#94a3b8;font-size:13px;margin-top:3px}
+.alert-items{background:rgba(255,255,255,0.04);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.alert-item-row{display:flex;justify-content:space-between;color:#cbd5e1;font-size:13px;margin-bottom:4px}
+.alert-item-row:last-child{margin-bottom:0}
+.alert-divider{height:1px;background:rgba(255,255,255,0.07);margin:8px 0}
+.alert-total-row{display:flex;justify-content:space-between;color:var(--gold);font-weight:900;font-size:15px}
+.alert-note{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.22);border-radius:9px;padding:8px 12px;margin-bottom:14px;color:#fbbf24;font-size:12px;display:none}
+.alert-btns{display:flex;gap:10px}
+.alert-decline{flex:1;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--red);border-radius:10px;padding:11px 0;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;transition:all .15s}
+.alert-decline:hover{background:rgba(248,113,113,.2)}
+.alert-accept{flex:2;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#000;border-radius:10px;padding:11px 0;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;transition:transform .15s}
+.alert-accept:hover{transform:scale(1.03)}
+
+/* ── Time Picker ── */
+#timePicker{display:none;flex-direction:column}
+#timePicker.show{display:flex}
+#alertStep1{display:flex;flex-direction:column}
+#alertStep1.hide{display:none}
+.tp-title{color:var(--text);font-size:16px;font-weight:700;margin-bottom:5px}
+.tp-sub{color:var(--muted);font-size:12px;margin-bottom:16px}
+.tp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.tp-btn{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  color:#cbd5e1;border-radius:10px;padding:12px 0;font-weight:700;font-size:15px;
+  cursor:pointer;font-family:inherit;transition:all .15s;
+}
+.tp-btn:hover{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3)}
+.tp-btn.selected{background:linear-gradient(135deg,#f59e0b,#d97706);border-color:var(--gold);color:#000}
+.tp-preview{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.22);border-radius:9px;padding:8px 14px;margin-bottom:14px;color:var(--green);font-size:12px;text-align:center;display:none}
+.tp-preview.show{display:block}
+.tp-btns{display:flex;gap:10px}
+.tp-back{flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:var(--muted);border-radius:10px;padding:11px 0;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}
+.tp-back:hover{border-color:rgba(255,255,255,.2)}
+.tp-confirm{flex:2;background:rgba(255,255,255,0.05);border:none;color:#334155;border-radius:10px;padding:11px 0;font-weight:900;font-size:14px;cursor:not-allowed;font-family:inherit;transition:all .15s}
+.tp-confirm.active{background:linear-gradient(135deg,#4ade80,#16a34a);color:#000;cursor:pointer}
+.tp-confirm.active:hover{transform:scale(1.02)}
+
+/* ── Toast ── */
+#toast{
+  position:fixed;bottom:26px;left:50%;transform:translateX(-50%);
+  background:#0f172a;border:1px solid rgba(245,158,11,.5);
+  color:var(--gold);padding:10px 26px;border-radius:30px;
+  font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,.6);
+  z-index:100;display:none;animation:slideDown .3s ease;white-space:nowrap;
+}
+#toast.err{border-color:rgba(248,113,113,.5);color:var(--red)}
+#toast.show{display:block}
+
+/* ── SVG Ring ── */
+.ring-svg{transform:rotate(-90deg)}
+.ring-track{fill:none;stroke:rgba(255,255,255,.07);stroke-width:5}
+.ring-prog{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .5s ease}
+.ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-time{font-weight:800;font-size:15px;font-family:'DM Mono',monospace}
+.ring-sub{color:var(--muted);font-size:9px;font-weight:700;margin-top:1px}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<div id="header">
+  <div class="logo">
+    <div class="logo-icon">🏪</div>
+    <div>
+      <div class="logo-title">दुकान ऑर्डर पैनल</div>
+      <div class="logo-sub">लाइव ऑर्डर मैनेजमेंट</div>
+    </div>
+    <div id="newBadge">0</div>
+  </div>
+  <button id="testBtn" onclick="simulateOrder()">🔔 नया ऑर्डर (Test)</button>
+</div>
+
+<!-- ══ STATS ══ -->
+<div id="statsBar">
+  <div class="stat"><div class="stat-num" id="s-new" style="color:#f59e0b">0</div><div class="stat-label">नया</div></div>
+  <div class="stat"><div class="stat-num" id="s-prep" style="color:#38bdf8">0</div><div class="stat-label">बन रहा</div></div>
+  <div class="stat"><div class="stat-num" id="s-ready" style="color:#4ade80">0</div><div class="stat-label">तैयार</div></div>
+  <div class="stat"><div class="stat-num" id="s-done" style="color:#475569">0</div><div class="stat-label">पूरा</div></div>
+</div>
+
+<!-- ══ BODY ══ -->
+<div id="body">
+  <div id="orderList"></div>
+  <div id="detail"><div class="detail-empty" id="detail-empty">कोई ऑर्डर चुनें 👆</div><div id="detail-inner" style="display:none"></div></div>
+  <div id="customerPanel">
+    <div id="cp-header"><div class="cp-title">📱 ग्राहक पैनल</div><div class="cp-sub">लाइव दिखता है ग्राहक को</div></div>
+    <div id="cp-list"><div class="cp-empty" id="cp-empty">कोई सक्रिय ऑर्डर नहीं</div></div>
+  </div>
+</div>
+
+<!-- ══ ALERT OVERLAY ══ -->
+<div id="alertOverlay">
+  <div id="alertBox">
+    <!-- Step 1: Alert -->
+    <div id="alertStep1">
+      <div class="alert-bell">
+        <span class="alert-bell-icon ring" id="bellIcon">🔔</span>
+        <div class="alert-title">नया ऑर्डर आया!</div>
+        <div class="alert-sub" id="alertSub">—</div>
+      </div>
+      <div class="alert-items" id="alertItems"></div>
+      <div class="alert-note" id="alertNote"></div>
+      <div class="alert-btns">
+        <button class="alert-decline" onclick="declineOrder()">❌ रद्द करें</button>
+        <button class="alert-accept" onclick="goPickTime()">स्वीकार करें →</button>
+      </div>
+    </div>
+    <!-- Step 2: Time Picker -->
+    <div id="timePicker">
+      <div class="tp-title">⏱ समय चुनें</div>
+      <div class="tp-sub">ऑर्डर तैयार होने में कितना समय लगेगा? (ग्राहक को +5 मिनट दिखेगा)</div>
+      <div class="tp-grid" id="tpGrid"></div>
+      <div class="tp-preview" id="tpPreview"></div>
+      <div class="tp-btns">
+        <button class="tp-back" onclick="goAlert()">← वापस</button>
+        <button class="tp-confirm" id="tpConfirmBtn" onclick="confirmAccept()">कन्फर्म करें ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div id="toast"></div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const TIME_OPTIONS = [10,15,20,25,30,45];
+let orders = [
+  {id:'ORD-001',customer:'Rahul Sharma',avatar:'RS',phone:'98765-43210',ts:Date.now()-70000,address:'टेबल 4',status:'new',items:[{name:'पनीर बटर मसाला',qty:2,price:280},{name:'बटर नान',qty:4,price:45}],total:740,note:'Extra मक्खन',etaSec:null,acceptedAt:null},
+  {id:'ORD-002',customer:'Priya Gupta',avatar:'PG',phone:'87654-32109',ts:Date.now()-320000,address:'होम डिलीवरी',status:'preparing',items:[{name:'चिकन बिरयानी',qty:1,price:320},{name:'रायता',qty:1,price:60}],total:380,note:'',etaSec:25*60,acceptedAt:Date.now()-130000},
 ];
+let alertQueue=[];
+let selectedId=orders[0].id;
+let selectedTime=null;
+let audioCtx=null;
+let bellTimer=null;
+let raf=null;
+let orderCounter=3;
 
-const TIME_OPTIONS = [10, 15, 20, 25, 30, 45];
-
-const STATUS_CFG = {
-  new:      { label: "नया ऑर्डर",  color: "#f59e0b", bg: "rgba(245,158,11,0.12)", icon: "🔔" },
-  preparing:{ label: "बन रहा है", color: "#38bdf8", bg: "rgba(56,189,248,0.12)",  icon: "👨‍🍳" },
-  ready:    { label: "तैयार है",   color: "#4ade80", bg: "rgba(74,222,128,0.12)", icon: "✅" },
-  done:     { label: "पूरा हुआ",  color: "#64748b", bg: "rgba(100,116,139,0.1)", icon: "📦" },
-  declined: { label: "रद्द",      color: "#f87171", bg: "rgba(248,113,113,0.1)", icon: "❌" },
+const STATUS={
+  new:     {label:'नया ऑर्डर', color:'#f59e0b',bg:'rgba(245,158,11,.12)',icon:'🔔'},
+  preparing:{label:'बन रहा है',color:'#38bdf8',bg:'rgba(56,189,248,.12)',icon:'👨‍🍳'},
+  ready:   {label:'तैयार है',  color:'#4ade80',bg:'rgba(74,222,128,.12)',icon:'✅'},
+  done:    {label:'पूरा हुआ', color:'#64748b',bg:'rgba(100,116,139,.1)', icon:'📦'},
+  declined:{label:'रद्द',     color:'#f87171',bg:'rgba(248,113,113,.1)', icon:'❌'},
 };
 
-// ─── Components ───────────────────────────────────────────────────────────────
-function RingAlert({ order, onAccept, onDecline }) {
-  const [selectedTime, setSelectedTime] = useState(null);
-  const [step, setStep] = useState("alert"); // alert | pick
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 999,
-      background: "rgba(0,0,0,0.85)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      animation: "fadeIn 0.2s ease",
-    }}>
-      <div style={{
-        background: "#0f172a",
-        border: "2px solid #f59e0b",
-        borderRadius: 20, padding: 28, width: 360,
-        boxShadow: "0 0 60px rgba(245,158,11,0.25)",
-        animation: step === "alert" ? "ringShake 0.5s ease" : "none",
-      }}>
-        {step === "alert" ? (
-          <>
-            <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <div style={{ fontSize: 48, animation: "bellRing 0.6s ease infinite" }}>🔔</div>
-              <div style={{ color: "#f59e0b", fontSize: 20, fontWeight: 800, marginTop: 8 }}>नया ऑर्डर आया!</div>
-              <div style={{ color: "#94a3b8", fontSize: 13, marginTop: 4 }}>{order.id} • {order.customer}</div>
-            </div>
-
-            <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
-              {order.items.map((it, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", color: "#cbd5e1", fontSize: 13, marginBottom: 4 }}>
-                  <span>{it.qty}× {it.name}</span>
-                  <span>{formatINR(it.price * it.qty)}</span>
-                </div>
-              ))}
-              <div style={{ height: 1, background: "rgba(255,255,255,0.07)", margin: "8px 0" }} />
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#f59e0b", fontWeight: 800, fontSize: 15 }}>
-                <span>कुल</span><span>{formatINR(order.total)}</span>
-              </div>
-            </div>
-
-            {order.note && (
-              <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 9, padding: "8px 12px", marginBottom: 14, color: "#fbbf24", fontSize: 12 }}>
-                📝 {order.note}
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={onDecline} style={{
-                flex: 1, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)",
-                color: "#f87171", borderRadius: 10, padding: "11px 0", fontWeight: 700, fontSize: 14, cursor: "pointer",
-              }}>रद्द करें</button>
-              <button onClick={() => setStep("pick")} style={{
-                flex: 2, background: "linear-gradient(135deg,#f59e0b,#d97706)",
-                border: "none", color: "#000", borderRadius: 10, padding: "11px 0",
-                fontWeight: 800, fontSize: 14, cursor: "pointer",
-              }}>स्वीकार करें →</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ color: "#f1f5f9", fontSize: 16, fontWeight: 700, marginBottom: 6 }}>⏱ समय चुनें</div>
-            <div style={{ color: "#64748b", fontSize: 12, marginBottom: 16 }}>ऑर्डर बनने में कितना समय लगेगा? (+5 मिनट ग्राहक को मिलेगा)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 18 }}>
-              {TIME_OPTIONS.map(t => (
-                <button key={t} onClick={() => setSelectedTime(t)} style={{
-                  background: selectedTime === t ? "linear-gradient(135deg,#f59e0b,#d97706)" : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${selectedTime === t ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
-                  color: selectedTime === t ? "#000" : "#cbd5e1",
-                  borderRadius: 10, padding: "12px 0", fontWeight: 700, fontSize: 15, cursor: "pointer",
-                }}>
-                  {t} मिनट
-                </button>
-              ))}
-            </div>
-            {selectedTime && (
-              <div style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 9, padding: "8px 14px", marginBottom: 14, color: "#4ade80", fontSize: 12, textAlign: "center" }}>
-                ✅ ग्राहक को दिखेगा: <strong>{selectedTime + 5} मिनट</strong>
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep("alert")} style={{
-                flex: 1, background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
-                color: "#64748b", borderRadius: 10, padding: "11px 0", fontWeight: 600, fontSize: 13, cursor: "pointer",
-              }}>← वापस</button>
-              <button disabled={!selectedTime} onClick={() => onAccept(selectedTime)} style={{
-                flex: 2, background: selectedTime ? "linear-gradient(135deg,#4ade80,#16a34a)" : "rgba(255,255,255,0.05)",
-                border: "none", color: selectedTime ? "#000" : "#334155",
-                borderRadius: 10, padding: "11px 0", fontWeight: 800, fontSize: 14,
-                cursor: selectedTime ? "pointer" : "not-allowed",
-              }}>कन्फर्म करें ✓</button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const fmt=(n)=>'₹'+Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const pad=(n)=>String(n).padStart(2,'0');
+function countdown(sec){if(sec<=0)return'00:00';return`${pad(Math.floor(sec/60))}:${pad(sec%60)}`}
+function timeAgo(ts){
+  const s=Math.floor((Date.now()-ts)/1000);
+  if(s<10)return'अभी';if(s<60)return`${s} सेकंड पहले`;
+  if(s<3600)return`${Math.floor(s/60)} मिनट पहले`;return`${Math.floor(s/3600)} घंटे पहले`;
 }
 
-function CountdownRing({ totalSec, remainingSec }) {
-  const pct = totalSec > 0 ? Math.max(0, remainingSec / totalSec) : 0;
-  const r = 38, circ = 2 * Math.PI * r;
-  const color = pct > 0.5 ? "#4ade80" : pct > 0.2 ? "#f59e0b" : "#f87171";
-  return (
-    <div style={{ position: "relative", width: 90, height: 90 }}>
-      <svg width="90" height="90" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="45" cy="45" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="5" />
-        <circle cx="45" cy="45" r={r} fill="none" stroke={color} strokeWidth="5"
-          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
-          strokeLinecap="round" style={{ transition: "stroke-dashoffset 1s linear, stroke 0.5s" }} />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ color, fontWeight: 800, fontSize: 16, fontFamily: "monospace" }}>{formatCountdown(remainingSec)}</span>
-        <span style={{ color: "#475569", fontSize: 9, fontWeight: 600 }}>बचा</span>
-      </div>
-    </div>
-  );
+// ─── Audio ────────────────────────────────────────────────────────────────────
+function bell(){
+  try{
+    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.type='sine';o.frequency.setValueAtTime(900,audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(440,audioCtx.currentTime+.45);
+    g.gain.setValueAtTime(.55,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.6);
+    o.start();o.stop(audioCtx.currentTime+.6);
+  }catch(e){}
 }
 
-function CustomerPanel({ orders }) {
-  const active = orders.filter(o => ["preparing", "ready"].includes(o.status));
-  return (
-    <div style={{ width: 290, background: "#050810", borderLeft: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "16px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ color: "#4ade80", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>📱 ग्राहक पैनल</div>
-        <div style={{ color: "#334155", fontSize: 11, marginTop: 2 }}>लाइव दिखता है ग्राहक को</div>
-      </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
-        {active.length === 0 ? (
-          <div style={{ color: "#1e293b", fontSize: 13, textAlign: "center", marginTop: 40 }}>कोई सक्रिय ऑर्डर नहीं</div>
-        ) : active.map(o => {
-          const remaining = o.etaSec !== null && o.acceptedAt
-            ? Math.max(0, o.etaSec - Math.floor((Date.now() - o.acceptedAt) / 1000))
-            : 0;
-          const cfg = STATUS_CFG[o.status];
-          return (
-            <div key={o.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 14, marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <div>
-                  <div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 13 }}>{o.customer}</div>
-                  <div style={{ color: "#475569", fontSize: 11 }}>{o.id}</div>
-                </div>
-                <span style={{ background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 20, border: `1px solid ${cfg.color}33` }}>
-                  {cfg.icon} {cfg.label}
-                </span>
-              </div>
+// ─── Order Card ───────────────────────────────────────────────────────────────
+function buildOrderCard(o){
+  const cfg=STATUS[o.status];
+  const isNew=o.status==='new';
+  const rem=o.etaSec&&o.acceptedAt?Math.max(0,o.etaSec-Math.floor((Date.now()-o.acceptedAt)/1000)):null;
+  let right='';
+  if(o.status==='preparing'&&rem!==null)
+    right=`<span class="oc-eta" style="color:${rem<120?'#f87171':'#38bdf8'}">⏱ ${countdown(rem)}</span>`;
+  else if(o.status==='ready')
+    right=`<span class="oc-eta" style="color:#4ade80">✅ तैयार!</span>`;
+  else
+    right=`<span class="oc-time">${timeAgo(o.ts)}</span>`;
 
-              {o.status === "preparing" && o.etaSec !== null && (
-                <div style={{ display: "flex", justifyContent: "center", margin: "10px 0" }}>
-                  <CountdownRing totalSec={o.etaSec} remainingSec={remaining} />
-                </div>
-              )}
-
-              {o.status === "ready" && (
-                <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 10, padding: "10px 12px", textAlign: "center" }}>
-                  <div style={{ fontSize: 24 }}>🎉</div>
-                  <div style={{ color: "#4ade80", fontWeight: 700, fontSize: 13, marginTop: 4 }}>आपका ऑर्डर तैयार है!</div>
-                </div>
-              )}
-
-              <div style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "10px 0" }} />
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#475569", fontSize: 12 }}>कुल राशि</span>
-                <span style={{ color: "#f59e0b", fontWeight: 800, fontSize: 14 }}>{formatINR(o.total)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+  const sel=selectedId===o.id?' selected':'';
+  const nw=isNew?' is-new':'';
+  return `<div class="order-card${sel}${nw}" onclick="selectOrder('${o.id}')">
+    <div class="oc-top">
+      <div><div class="oc-name">${o.customer}</div><div class="oc-sub">${o.id} • ${o.address}</div></div>
+      <span class="badge" style="background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.color}33">${cfg.icon} ${cfg.label}</span>
     </div>
-  );
+    <div class="oc-bot"><span class="oc-total">${fmt(o.total)}</span>${right}</div>
+  </div>`;
 }
 
-// ─── Main App ─────────────────────────────────────────────────────────────────
-export default function App() {
-  const [orders, setOrders] = useState(SEED);
-  const [alertQueue, setAlertQueue] = useState([]);
-  const [selectedId, setSelectedId] = useState(SEED[0].id);
-  const [tick, setTick] = useState(0);
-  const [toast, setToast] = useState(null);
-  const audioCtx = useRef(null);
-  const bellInterval = useRef(null);
+// ─── SVG Ring ─────────────────────────────────────────────────────────────────
+function buildRing(totalSec,remSec){
+  const r=38,circ=2*Math.PI*r;
+  const pct=totalSec>0?Math.max(0,remSec/totalSec):0;
+  const off=circ*(1-pct);
+  const col=pct>.5?'#4ade80':pct>.2?'#f59e0b':'#f87171';
+  return `<div style="position:relative;width:90px;height:90px">
+    <svg width="90" height="90" class="ring-svg">
+      <circle class="ring-track" cx="45" cy="45" r="${r}"/>
+      <circle class="ring-prog" cx="45" cy="45" r="${r}" stroke="${col}"
+        stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>
+    </svg>
+    <div class="ring-label">
+      <span class="ring-time" style="color:${col}">${countdown(remSec)}</span>
+      <span class="ring-sub">बचा</span>
+    </div>
+  </div>`;
+}
 
-  // Tick every second for countdowns + timeAgo
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
+function buildDetail(o){
+  if(!o)return;
+  document.getElementById('detail-empty').style.display='none';
+  const d=document.getElementById('detail-inner');
+  d.style.display='block';
+  const cfg=STATUS[o.status];
+  const rem=o.etaSec&&o.acceptedAt?Math.max(0,o.etaSec-Math.floor((Date.now()-o.acceptedAt)/1000)):null;
 
-  // Bell sound loop while alert is showing
-  useEffect(() => {
-    if (alertQueue.length > 0) {
-      if (!audioCtx.current) audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
-      createBell(audioCtx.current);
-      bellInterval.current = setInterval(() => createBell(audioCtx.current), 2500);
-    } else {
-      clearInterval(bellInterval.current);
-    }
-    return () => clearInterval(bellInterval.current);
-  }, [alertQueue.length]);
+  let timerHTML='';
+  if(o.status==='preparing'&&rem!==null) timerHTML=buildRing(o.etaSec,rem);
+  else if(o.status==='ready') timerHTML=`<div style="text-align:center"><div style="font-size:38px">🎉</div><div style="color:#4ade80;font-weight:700;font-size:12px;margin-top:4px">READY!</div></div>`;
 
-  const showToast = (text, type = "ok") => {
-    setToast({ text, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  let itemsHTML='';
+  o.items.forEach(it=>{
+    itemsHTML+=`<div class="item-row">
+      <div style="display:flex;align-items:center">
+        <div class="item-qty">${it.qty}</div>
+        <span class="item-name">${it.name}</span>
+      </div>
+      <span class="item-price">${fmt(it.price*it.qty)}</span>
+    </div>`;
+  });
 
-  const simulateOrder = () => {
-    const names = ["Amit Verma", "Sunita Rao", "Vikram Singh", "Meena Joshi", "Deepak Kumar"];
-    const items = [
-      [{ name: "दाल मखनी", qty: 1, price: 220 }, { name: "जीरा राइस", qty: 1, price: 150 }],
-      [{ name: "चिकन करी", qty: 2, price: 280 }, { name: "रोटी", qty: 4, price: 30 }],
-      [{ name: "पाव भाजी", qty: 2, price: 120 }, { name: "लस्सी", qty: 2, price: 80 }],
-    ];
-    const pickedItems = items[Math.floor(Math.random() * items.length)];
-    const total = pickedItems.reduce((s, i) => s + i.price * i.qty, 0);
-    const n = names[Math.floor(Math.random() * names.length)];
-    const order = {
-      id: `ORD-${String(orders.length + 1).padStart(3, "0")}`,
-      customer: n, avatar: n.split(" ").map(w => w[0]).join(""),
-      phone: "9" + Math.floor(Math.random() * 9e9).toString().padStart(9, "0"),
-      timestamp: Date.now(), address: `टेबल ${Math.floor(Math.random() * 12) + 1}`,
-      status: "new", items: pickedItems, total,
-      note: Math.random() > 0.6 ? "कम मसाला डालें" : "",
-      etaSec: null, acceptedAt: null,
-    };
-    setOrders(prev => [order, ...prev]);
-    setAlertQueue(prev => [...prev, order]);
-  };
+  const noteHTML=o.note?`<div class="note-box"><div class="note-title">📝 ग्राहक नोट</div><div class="note-text">${o.note}</div></div>`:'';
+  const etaHTML=o.etaSec?`<div class="eta-box"><div><div class="eta-label">ETA (ग्राहक को)</div><div class="eta-info">${Math.floor(o.etaSec/60)} मिनट दिखाया गया</div></div><div class="eta-tag">+5 मिनट जोड़ा ✓</div></div>`:'';
 
-  const handleAccept = useCallback((ownerMin) => {
-    const order = alertQueue[0];
-    if (!order) return;
-    const customerEta = (ownerMin + 5) * 60;
-    setOrders(prev => prev.map(o =>
-      o.id === order.id ? { ...o, status: "preparing", etaSec: customerEta, acceptedAt: Date.now() } : o
-    ));
-    setAlertQueue(prev => prev.slice(1));
-    setSelectedId(order.id);
-    showToast(`✅ ऑर्डर ${order.id} स्वीकार! ग्राहक को ${ownerMin + 5} मिनट दिखेगा।`);
-  }, [alertQueue]);
+  let actionHTML='';
+  if(o.status==='preparing') actionHTML=`<button class="action-btn btn-ready" onclick="markReady('${o.id}')">✅ तैयार है - ग्राहक को बताएं</button>`;
+  else if(o.status==='ready') actionHTML=`<button class="action-btn btn-done" onclick="markDone('${o.id}')">📦 डिलीवर किया</button>`;
 
-  const handleDecline = useCallback(() => {
-    const order = alertQueue[0];
-    if (!order) return;
-    setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: "declined" } : o));
-    setAlertQueue(prev => prev.slice(1));
-    showToast("❌ ऑर्डर रद्द किया", "err");
-  }, [alertQueue]);
-
-  const markReady = (id) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "ready" } : o));
-    showToast("🎉 ऑर्डर तैयार है!");
-  };
-  const markDone = (id) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "done" } : o));
-    showToast("📦 डिलीवर हो गया!");
-  };
-
-  const selected = orders.find(o => o.id === selectedId);
-  const newCount = orders.filter(o => o.status === "new").length;
-  const activeAlert = alertQueue[0];
-
-  return (
-    <div style={{ minHeight: "100vh", background: "#080b14", fontFamily: "'Noto Sans', 'DM Sans', sans-serif", display: "flex", flexDirection: "column" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700;800&family=DM+Mono:wght@500&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        @keyframes bellRing { 0%,100%{transform:rotate(-15deg)} 50%{transform:rotate(15deg)} }
-        @keyframes ringShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
-        @keyframes slideDown { from{transform:translateY(-20px);opacity:0} to{transform:translateY(0);opacity:1} }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.95)} }
-        @keyframes glow { 0%,100%{box-shadow:0 0 20px rgba(245,158,11,0.2)} 50%{box-shadow:0 0 40px rgba(245,158,11,0.5)} }
-      `}</style>
-
-      {/* Alert overlay */}
-      {activeAlert && <RingAlert order={activeAlert} onAccept={handleAccept} onDecline={handleDecline} />}
-
-      {/* Toast */}
-      {toast && (
-        <div style={{
-          position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)",
-          background: "#0f172a", border: `1px solid ${toast.type === "err" ? "#f8717155" : "#f59e0b55"}`,
-          color: toast.type === "err" ? "#f87171" : "#f59e0b",
-          padding: "10px 24px", borderRadius: 30, fontSize: 13, fontWeight: 600,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.6)", zIndex: 50, animation: "slideDown 0.3s ease",
-        }}>{toast.text}</div>
-      )}
-
-      {/* Header */}
-      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "12px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg,#f59e0b,#d97706)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🏪</div>
-          <div>
-            <div style={{ color: "#f1f5f9", fontWeight: 800, fontSize: 17, letterSpacing: -0.3 }}>दुकान ऑर्डर पैनल</div>
-            <div style={{ color: "#334155", fontSize: 11 }}>लाइव ऑर्डर मैनेजमेंट</div>
-          </div>
-          {newCount > 0 && (
-            <div style={{ background: "#f59e0b", color: "#000", width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, animation: "pulse 1s ease-in-out infinite" }}>{newCount}</div>
-          )}
+  d.innerHTML=`
+    <div class="detail-header">
+      <div><div class="detail-label">ऑर्डर</div><div class="detail-id">${o.id}</div></div>
+      <span class="badge" style="background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.color}44;font-size:13px;padding:7px 16px">${cfg.icon} ${cfg.label}</span>
+    </div>
+    <div class="detail-box">
+      <div class="detail-box-title">ग्राहक जानकारी</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700;font-size:15px">${o.customer}</div>
+          <div style="color:var(--muted);font-size:12px;margin-top:2px">${o.address}</div>
+          <div style="color:var(--muted);font-size:12px">📞 ${o.phone}</div>
         </div>
-        <button onClick={simulateOrder} style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)", border: "none", color: "#000", padding: "8px 18px", borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-          🔔 नया ऑर्डर (Test)
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: "flex", gap: 1, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        {[
-          { label: "नया", count: orders.filter(o => o.status === "new").length, color: "#f59e0b" },
-          { label: "बन रहा", count: orders.filter(o => o.status === "preparing").length, color: "#38bdf8" },
-          { label: "तैयार", count: orders.filter(o => o.status === "ready").length, color: "#4ade80" },
-          { label: "पूरा", count: orders.filter(o => o.status === "done").length, color: "#475569" },
-        ].map(s => (
-          <div key={s.label} style={{ flex: 1, padding: "10px 0", textAlign: "center", borderRight: "1px solid rgba(255,255,255,0.04)" }}>
-            <div style={{ color: s.color, fontWeight: 800, fontSize: 20, fontFamily: "monospace" }}>{s.count}</div>
-            <div style={{ color: "#334155", fontSize: 10, fontWeight: 600, marginTop: 1 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Body */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-
-        {/* Order List */}
-        <div style={{ width: 300, borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", padding: 12 }}>
-          {orders.map(order => {
-            const cfg = STATUS_CFG[order.status];
-            const isNew = order.status === "new";
-            const remaining = order.etaSec !== null && order.acceptedAt
-              ? Math.max(0, order.etaSec - Math.floor((Date.now() - order.acceptedAt) / 1000))
-              : null;
-            return (
-              <div key={order.id + tick} onClick={() => setSelectedId(order.id)} style={{
-                background: selectedId === order.id ? "rgba(245,158,11,0.07)" : isNew ? "rgba(245,158,11,0.03)" : "rgba(255,255,255,0.02)",
-                border: `1px solid ${selectedId === order.id ? "rgba(245,158,11,0.3)" : isNew ? "rgba(245,158,11,0.2)" : "rgba(255,255,255,0.06)"}`,
-                borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer",
-                animation: isNew ? "glow 1.5s ease-in-out infinite" : "none",
-                transition: "all 0.2s",
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 13 }}>{order.customer}</div>
-                    <div style={{ color: "#475569", fontSize: 11, marginTop: 1 }}>{order.id} • {order.address}</div>
-                  </div>
-                  <span style={{ background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 20, border: `1px solid ${cfg.color}33`, whiteSpace: "nowrap" }}>
-                    {cfg.icon} {cfg.label}
-                  </span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                  <span style={{ color: "#f59e0b", fontWeight: 800, fontSize: 14 }}>{formatINR(order.total)}</span>
-                  {remaining !== null && order.status === "preparing" && (
-                    <span style={{ color: remaining < 120 ? "#f87171" : "#38bdf8", fontSize: 12, fontWeight: 700, fontFamily: "monospace" }}>⏱ {formatCountdown(remaining)}</span>
-                  )}
-                  {order.status === "ready" && <span style={{ color: "#4ade80", fontSize: 11, fontWeight: 700 }}>✅ तैयार!</span>}
-                  {!["preparing", "ready"].includes(order.status) && (
-                    <span style={{ color: "#334155", fontSize: 11 }}>{timeAgo(order.timestamp)}</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Order Detail */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          {selected ? (() => {
-            const cfg = STATUS_CFG[selected.status];
-            const remaining = selected.etaSec !== null && selected.acceptedAt
-              ? Math.max(0, selected.etaSec - Math.floor((Date.now() - selected.acceptedAt) / 1000))
-              : null;
-            return (
-              <div style={{ maxWidth: 500 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-                  <div>
-                    <div style={{ color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>ऑर्डर</div>
-                    <div style={{ color: "#f59e0b", fontSize: 26, fontWeight: 900, letterSpacing: -1 }}>{selected.id}</div>
-                  </div>
-                  <span style={{ background: cfg.bg, color: cfg.color, fontSize: 13, fontWeight: 700, padding: "7px 16px", borderRadius: 22, border: `1px solid ${cfg.color}44` }}>
-                    {cfg.icon} {cfg.label}
-                  </span>
-                </div>
-
-                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 16, marginBottom: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div style={{ color: "#475569", fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>ग्राहक जानकारी</div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <div>
-                      <div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 15 }}>{selected.customer}</div>
-                      <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>{selected.address}</div>
-                      <div style={{ color: "#475569", fontSize: 12 }}>📞 {selected.phone}</div>
-                    </div>
-                    {remaining !== null && selected.status === "preparing" && (
-                      <CountdownRing totalSec={selected.etaSec} remainingSec={remaining} />
-                    )}
-                    {selected.status === "ready" && (
-                      <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: 36 }}>🎉</div>
-                        <div style={{ color: "#4ade80", fontSize: 11, fontWeight: 700, marginTop: 4 }}>READY!</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: 16, marginBottom: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div style={{ color: "#475569", fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 }}>आइटम</div>
-                  {selected.items.map((it, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 9, marginBottom: 6, border: "1px solid rgba(255,255,255,0.05)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", width: 24, height: 24, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>{it.qty}</span>
-                        <span style={{ color: "#cbd5e1", fontSize: 13 }}>{it.name}</span>
-                      </div>
-                      <span style={{ color: "#94a3b8", fontSize: 13, fontFamily: "monospace" }}>{formatINR(it.price * it.qty)}</span>
-                    </div>
-                  ))}
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.07)", margin: "12px 0" }} />
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#64748b", fontWeight: 600 }}>कुल राशि</span>
-                    <span style={{ color: "#f59e0b", fontWeight: 900, fontSize: 20, fontFamily: "monospace" }}>{formatINR(selected.total)}</span>
-                  </div>
-                </div>
-
-                {selected.note && (
-                  <div style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
-                    <div style={{ color: "#fbbf24", fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>ग्राहक नोट</div>
-                    <div style={{ color: "#cbd5e1", fontSize: 13 }}>{selected.note}</div>
-                  </div>
-                )}
-
-                {selected.etaSec && (
-                  <div style={{ background: "rgba(56,189,248,0.07)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 12, padding: "10px 14px", marginBottom: 14, display: "flex", justifyContent: "space-between" }}>
-                    <div>
-                      <div style={{ color: "#38bdf8", fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 2 }}>ETA (ग्राहक को)</div>
-                      <div style={{ color: "#cbd5e1", fontSize: 13 }}>{Math.floor(selected.etaSec / 60)} मिनट दिखाया गया</div>
-                    </div>
-                    <div style={{ color: "#38bdf8", fontWeight: 800, fontSize: 13 }}>+5 मिनट जोड़ा ✓</div>
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: 10 }}>
-                  {selected.status === "preparing" && (
-                    <button onClick={() => markReady(selected.id)} style={{ flex: 1, background: "linear-gradient(135deg,#4ade80,#16a34a)", border: "none", color: "#000", borderRadius: 12, padding: "13px 0", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
-                      ✅ तैयार है
-                    </button>
-                  )}
-                  {selected.status === "ready" && (
-                    <button onClick={() => markDone(selected.id)} style={{ flex: 1, background: "linear-gradient(135deg,#38bdf8,#0284c7)", border: "none", color: "#000", borderRadius: 12, padding: "13px 0", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
-                      📦 डिलीवर किया
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })() : (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#1e293b", fontSize: 14 }}>
-              कोई ऑर्डर चुनें
-            </div>
-          )}
-        </div>
-
-        {/* Customer Panel */}
-        <CustomerPanel orders={orders} key={tick} />
+        ${timerHTML}
       </div>
     </div>
-  );
+    <div class="detail-box">
+      <div class="detail-box-title">आइटम</div>
+      ${itemsHTML}
+      <div class="divider"></div>
+      <div class="total-row"><span class="total-label">कुल राशि</span><span class="total-val">${fmt(o.total)}</span></div>
+    </div>
+    ${noteHTML}${etaHTML}${actionHTML}`;
 }
+
+// ─── Customer Panel ───────────────────────────────────────────────────────────
+function buildCustomerPanel(){
+  const active=orders.filter(o=>['preparing','ready'].includes(o.status));
+  const cp=document.getElementById('cp-list');
+  const empty=document.getElementById('cp-empty');
+  if(active.length===0){cp.innerHTML='<div class="cp-empty">कोई सक्रिय ऑर्डर नहीं</div>';return;}
+  let html='';
+  active.forEach(o=>{
+    const cfg=STATUS[o.status];
+    const rem=o.etaSec&&o.acceptedAt?Math.max(0,o.etaSec-Math.floor((Date.now()-o.acceptedAt)/1000)):0;
+    let mid='';
+    if(o.status==='preparing'&&o.etaSec) mid=`<div class="cp-ring-wrap">${buildRing(o.etaSec,rem)}</div>`;
+    else if(o.status==='ready') mid=`<div class="cp-ready-box"><div class="cp-ready-icon">🎉</div><div class="cp-ready-text">आपका ऑर्डर तैयार है!</div></div>`;
+    html+=`<div class="cp-card">
+      <div class="cp-top">
+        <div><div class="cp-name">${o.customer}</div><div class="cp-id">${o.id}</div></div>
+        <span class="badge" style="background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.color}33">${cfg.icon} ${cfg.label}</span>
+      </div>
+      ${mid}
+      <div class="cp-divider"></div>
+      <div class="cp-total-row"><span class="cp-total-label">कुल राशि</span><span class="cp-total-val">${fmt(o.total)}</span></div>
+    </div>`;
+  });
+  cp.innerHTML=html;
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function updateStats(){
+  ['new','preparing','ready','done'].forEach(s=>{
+    const ids={new:'s-new',preparing:'s-prep',ready:'s-ready',done:'s-done'};
+    document.getElementById(ids[s]).textContent=orders.filter(o=>o.status===s).length;
+  });
+  const n=orders.filter(o=>o.status==='new').length;
+  const b=document.getElementById('newBadge');
+  b.textContent=n; b.classList.toggle('show',n>0);
+}
+
+// ─── Render All ───────────────────────────────────────────────────────────────
+function render(){
+  // Order list
+  document.getElementById('orderList').innerHTML=orders.map(buildOrderCard).join('');
+  // Detail
+  const sel=orders.find(o=>o.id===selectedId);
+  if(sel) buildDetail(sel);
+  else{document.getElementById('detail-empty').style.display='flex';document.getElementById('detail-inner').style.display='none';}
+  buildCustomerPanel();
+  updateStats();
+}
+
+// ─── Alert Queue ──────────────────────────────────────────────────────────────
+function showNextAlert(){
+  if(alertQueue.length===0){
+    document.getElementById('alertOverlay').classList.remove('show');
+    clearInterval(bellTimer);bellTimer=null;return;
+  }
+  const o=alertQueue[0];
+  document.getElementById('alertOverlay').classList.add('show');
+  document.getElementById('alertStep1').classList.remove('hide');
+  document.getElementById('timePicker').classList.remove('show');
+  document.getElementById('alertSub').textContent=`${o.id} • ${o.customer}`;
+  let itemsHTML='';
+  o.items.forEach(it=>{itemsHTML+=`<div class="alert-item-row"><span>${it.qty}× ${it.name}</span><span>${fmt(it.price*it.qty)}</span></div>`;});
+  itemsHTML+=`<div class="alert-divider"></div><div class="alert-total-row"><span>कुल</span><span>${fmt(o.total)}</span></div>`;
+  document.getElementById('alertItems').innerHTML=itemsHTML;
+  const noteEl=document.getElementById('alertNote');
+  if(o.note){noteEl.textContent='📝 '+o.note;noteEl.style.display='block';}else{noteEl.style.display='none';}
+  // Bell ring
+  clearInterval(bellTimer);
+  bell();
+  bellTimer=setInterval(bell,2600);
+  // Shake box
+  const box=document.getElementById('alertBox');
+  box.classList.remove('shake');void box.offsetWidth;box.classList.add('shake');
+}
+
+function goPickTime(){
+  document.getElementById('alertStep1').classList.add('hide');
+  document.getElementById('timePicker').classList.add('show');
+  selectedTime=null;
+  // Build grid
+  let g='';
+  TIME_OPTIONS.forEach(t=>{g+=`<button class="tp-btn" onclick="pickTime(${t},this)">${t} मिनट</button>`;});
+  document.getElementById('tpGrid').innerHTML=g;
+  document.getElementById('tpPreview').classList.remove('show');
+  document.getElementById('tpConfirmBtn').classList.remove('active');
+}
+
+function pickTime(min,el){
+  selectedTime=min;
+  document.querySelectorAll('.tp-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  const prev=document.getElementById('tpPreview');
+  prev.innerHTML=`✅ ग्राहक को दिखेगा: <strong>${min+5} मिनट</strong>`;
+  prev.classList.add('show');
+  document.getElementById('tpConfirmBtn').classList.add('active');
+}
+
+function goAlert(){
+  document.getElementById('timePicker').classList.remove('show');
+  document.getElementById('alertStep1').classList.remove('hide');
+}
+
+function confirmAccept(){
+  if(!selectedTime)return;
+  const o=alertQueue.shift();
+  const customerEta=(selectedTime+5)*60;
+  orders=orders.map(x=>x.id===o.id?{...x,status:'preparing',etaSec:customerEta,acceptedAt:Date.now()}:x);
+  selectedId=o.id;
+  showToast(`✅ ऑर्डर ${o.id} स्वीकार! ग्राहक को ${selectedTime+5} मिनट दिखेगा।`);
+  clearInterval(bellTimer);bellTimer=null;
+  render();
+  showNextAlert();
+}
+
+function declineOrder(){
+  const o=alertQueue.shift();
+  orders=orders.map(x=>x.id===o.id?{...x,status:'declined'}:x);
+  showToast('❌ ऑर्डर रद्द किया','err');
+  clearInterval(bellTimer);bellTimer=null;
+  render();
+  showNextAlert();
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function selectOrder(id){selectedId=id;render();}
+function markReady(id){orders=orders.map(o=>o.id===id?{...o,status:'ready'}:o);showToast('🎉 ऑर्डर तैयार है! ग्राहक को सूचित किया।');render();}
+function markDone(id){orders=orders.map(o=>o.id===id?{...o,status:'done'}:o);showToast('📦 ऑर्डर डिलीवर हो गया!');render();}
+
+// ─── Simulate Order ───────────────────────────────────────────────────────────
+const NAMES=[['Amit Verma','AV'],['Sunita Rao','SR'],['Vikram Singh','VS'],['Meena Joshi','MJ'],['Deepak Kumar','DK']];
+const MENU_SETS=[
+  [{name:'दाल मखनी',qty:1,price:220},{name:'जीरा राइस',qty:1,price:150}],
+  [{name:'चिकन करी',qty:2,price:280},{name:'रोटी',qty:4,price:30}],
+  [{name:'पाव भाजी',qty:2,price:120},{name:'लस्सी',qty:2,price:80}],
+  [{name:'राजमा चावल',qty:1,price:180},{name:'पापड़',qty:2,price:20}],
+];
+function simulateOrder(){
+  const [name,av]=NAMES[Math.floor(Math.random()*NAMES.length)];
+  const items=MENU_SETS[Math.floor(Math.random()*MENU_SETS.length)];
+  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+  const id='ORD-'+String(orderCounter++).padStart(3,'0');
+  const o={id,customer:name,avatar:av,phone:'9'+Math.floor(100000000+Math.random()*900000000),
+    ts:Date.now(),address:`टेबल ${Math.floor(Math.random()*12)+1}`,status:'new',
+    items,total,note:Math.random()>.55?'कम मसाला डालें':'',etaSec:null,acceptedAt:null};
+  orders=[o,...orders];
+  alertQueue.push(o);
+  if(alertQueue.length===1)showNextAlert();
+  render();
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer=null;
+function showToast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show'+(type==='err'?' err':'');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='',3200);
+}
+
+// ─── Live tick ────────────────────────────────────────────────────────────────
+function tick(){render();raf=requestAnimationFrame(()=>setTimeout(tick,1000));}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+render();tick();
+</script>
+</body>
+</html>
