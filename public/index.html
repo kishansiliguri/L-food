@@ -2,256 +2,639 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>दुकान ऑर्डर पैनल</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700;800;900&family=DM+Mono:wght@500&display=swap" rel="stylesheet"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>दुकान ऑर्डर डैशबोर्ड</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
 <style>
+/* ══════════════════════════════════════════
+   VARIABLES & RESET
+══════════════════════════════════════════ */
 :root{
-  --bg:#07090f;--surface:#0d1120;--border:rgba(255,255,255,0.07);
-  --gold:#f59e0b;--blue:#38bdf8;--green:#4ade80;--red:#f87171;
-  --text:#f1f5f9;--muted:#475569;--dim:#1e293b;
+  --bg:#0c0e14;
+  --s1:#12151f;
+  --s2:#181c28;
+  --s3:#1e2333;
+  --border:#ffffff0d;
+  --border2:#ffffff14;
+  --gold:#f0a500;
+  --gold2:#fbbf24;
+  --blue:#3b9edd;
+  --green:#34c97b;
+  --red:#e05252;
+  --orange:#f07040;
+  --purple:#9b6dff;
+  --text:#eef2ff;
+  --text2:#8892b0;
+  --text3:#3d4663;
+  --radius:14px;
+  --shadow:0 4px 24px rgba(0,0,0,.35);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
-::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--dim);border-radius:4px}
-
-/* ── Animations ── */
-@keyframes bellRing{0%,100%{transform:rotate(-18deg) scale(1.1)}50%{transform:rotate(18deg) scale(1.1)}}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.93)}}
-@keyframes glow{0%,100%{box-shadow:0 0 14px rgba(245,158,11,.18)}50%{box-shadow:0 0 36px rgba(245,158,11,.5)}}
-@keyframes slideDown{from{transform:translateY(-18px);opacity:0}to{transform:translateY(0);opacity:1}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
-@keyframes spin{to{stroke-dashoffset:0}}
-@keyframes ringIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
-
-/* ── Header ── */
-#header{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:13px 20px;border-bottom:1px solid var(--border);
-  background:rgba(255,255,255,0.025);flex-shrink:0;
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Baloo 2',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
 }
-.logo{display:flex;align-items:center;gap:10px}
-.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
-.logo-title{font-size:18px;font-weight:900;letter-spacing:-.4px}
-.logo-sub{font-size:11px;color:var(--muted);margin-top:1px}
-#newBadge{background:var(--gold);color:#000;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:800;display:none;align-items:center;justify-content:center;animation:pulse 1.2s ease-in-out infinite}
-#newBadge.show{display:flex}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+
+/* ══════════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════════ */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(.88)}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(240,165,0,0)}60%{box-shadow:0 0 0 6px rgba(240,165,0,.18)}}
+@keyframes bellSwing{0%,100%{transform:rotate(0)}15%{transform:rotate(-18deg)}30%{transform:rotate(18deg)}45%{transform:rotate(-12deg)}60%{transform:rotate(12deg)}75%{transform:rotate(-6deg)}90%{transform:rotate(6deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes ripple{0%{box-shadow:0 0 0 0 rgba(224,82,82,.4)}100%{box-shadow:0 0 0 16px rgba(224,82,82,0)}}
+@keyframes delayBlink{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══════════════════════════════════════════
+   APP SHELL
+══════════════════════════════════════════ */
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* ── TOPBAR ── */
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;height:58px;flex-shrink:0;
+  background:var(--s1);
+  border-bottom:1px solid var(--border2);
+  gap:12px;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-logo{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,#f0a500,#e07000);
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  box-shadow:0 2px 12px rgba(240,165,0,.3);flex-shrink:0;
+}
+.brand-name{font-size:17px;font-weight:800;letter-spacing:-.4px;white-space:nowrap}
+.brand-sub{font-size:10px;color:var(--text2);letter-spacing:.5px}
+#newBadge{
+  background:var(--red);color:#fff;
+  min-width:20px;height:20px;border-radius:10px;
+  font-size:10px;font-weight:800;padding:0 6px;
+  display:none;align-items:center;justify-content:center;
+  animation:pulse .9s ease-in-out infinite;
+}
+#newBadge.on{display:flex}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+#clock{
+  font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;
+  color:var(--text2);padding:6px 12px;background:var(--s2);
+  border-radius:8px;border:1px solid var(--border2);white-space:nowrap;
+}
 #testBtn{
-  background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#000;
-  padding:9px 18px;border-radius:10px;font-size:13px;font-weight:800;
-  cursor:pointer;font-family:inherit;transition:transform .15s;
+  background:linear-gradient(135deg,#f0a500,#e07000);
+  border:none;color:#fff;padding:8px 14px;border-radius:10px;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
+  white-space:nowrap;transition:transform .15s,box-shadow .15s;
+  box-shadow:0 2px 10px rgba(240,165,0,.3);
 }
-#testBtn:hover{transform:scale(1.04)}
+#testBtn:hover{transform:scale(1.04);box-shadow:0 4px 18px rgba(240,165,0,.4)}
 
-/* ── Stats bar ── */
-#statsBar{display:flex;border-bottom:1px solid rgba(255,255,255,0.05);flex-shrink:0}
-.stat{flex:1;padding:10px 0;text-align:center;border-right:1px solid rgba(255,255,255,0.04)}
-.stat:last-child{border-right:none}
-.stat-num{font-size:20px;font-weight:900;font-family:'DM Mono',monospace}
-.stat-label{font-size:10px;color:var(--muted);font-weight:700;margin-top:1px;letter-spacing:.5px}
-
-/* ── Body layout ── */
-#body{flex:1;display:flex;overflow:hidden}
-
-/* ── Order List ── */
-#orderList{width:295px;border-right:1px solid var(--border);overflow-y:auto;padding:10px}
-.order-card{
-  background:rgba(255,255,255,0.025);border:1px solid var(--border);
-  border-radius:13px;padding:12px 14px;margin-bottom:9px;cursor:pointer;
-  transition:all .2s;
+/* ── STATS BAR ── */
+#statsBar{
+  display:flex;gap:0;flex-shrink:0;
+  background:var(--s1);
+  border-bottom:1px solid var(--border2);
+  overflow-x:auto;
 }
-.order-card:hover{background:rgba(255,255,255,0.04)}
-.order-card.selected{background:rgba(245,158,11,0.07);border-color:rgba(245,158,11,.3)}
-.order-card.is-new{animation:glow 1.6s ease-in-out infinite;border-color:rgba(245,158,11,.25)}
-.oc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-.oc-name{font-weight:700;font-size:13px}
-.oc-sub{color:var(--muted);font-size:11px;margin-top:2px}
-.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
-.oc-bot{display:flex;justify-content:space-between;align-items:center}
-.oc-total{color:var(--gold);font-weight:900;font-size:14px;font-family:'DM Mono',monospace}
-.oc-time{color:var(--muted);font-size:11px}
-.oc-eta{font-size:12px;font-weight:700;font-family:'DM Mono',monospace}
+.stat-pill{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 18px;border-right:1px solid var(--border);
+  cursor:pointer;transition:background .15s;flex-shrink:0;
+  position:relative;
+}
+.stat-pill:hover{background:var(--s2)}
+.stat-pill.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--gold)}
+.stat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stat-info{}
+.stat-num{font-size:17px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1}
+.stat-lbl{font-size:10px;color:var(--text2);font-weight:600;letter-spacing:.5px}
 
-/* ── Detail Panel ── */
-#detail{flex:1;overflow-y:auto;padding:22px}
-#detail-inner{max-width:490px}
-.detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
-.detail-id{color:var(--gold);font-size:28px;font-weight:900;letter-spacing:-1px}
-.detail-label{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
-.detail-box{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
-.detail-box-title{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:11px}
-.item-row{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;background:rgba(255,255,255,0.03);border-radius:9px;margin-bottom:5px;border:1px solid rgba(255,255,255,0.05)}
-.item-qty{background:rgba(245,158,11,.15);color:var(--gold);width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-right:10px;flex-shrink:0}
-.item-name{color:#cbd5e1;font-size:13px}
-.item-price{color:#94a3b8;font-size:13px;font-family:'DM Mono',monospace}
-.divider{height:1px;background:rgba(255,255,255,0.07);margin:11px 0}
-.total-row{display:flex;justify-content:space-between;align-items:center}
-.total-label{color:var(--muted);font-weight:600;font-size:14px}
-.total-val{color:var(--gold);font-weight:900;font-size:21px;font-family:'DM Mono',monospace}
-.note-box{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.22);border-radius:12px;padding:10px 14px;margin-bottom:12px}
-.note-title{color:#fbbf24;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
-.note-text{color:#cbd5e1;font-size:13px}
-.eta-box{background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.22);border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
-.eta-label{color:var(--blue);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px}
-.eta-info{color:#cbd5e1;font-size:13px}
-.eta-tag{color:var(--blue);font-size:12px;font-weight:800}
-.action-btn{width:100%;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform .15s;margin-bottom:8px}
-.action-btn:hover{transform:scale(1.02)}
-.btn-ready{background:linear-gradient(135deg,#4ade80,#16a34a);color:#000}
-.btn-done{background:linear-gradient(135deg,#38bdf8,#0284c7);color:#000}
-.detail-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--dim);font-size:14px}
+/* ── MAIN LAYOUT ── */
+#main{flex:1;display:flex;overflow:hidden;position:relative}
 
-/* ── Customer Panel ── */
-#customerPanel{width:285px;background:#050810;border-left:1px solid var(--border);display:flex;flex-direction:column}
-#cp-header{padding:14px 16px 11px;border-bottom:1px solid var(--border)}
-.cp-title{color:var(--green);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
-.cp-sub{color:#334155;font-size:11px;margin-top:2px}
-#cp-list{flex:1;overflow-y:auto;padding:12px}
-.cp-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;margin-bottom:12px}
-.cp-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
-.cp-name{color:var(--text);font-weight:700;font-size:13px}
-.cp-id{color:var(--muted);font-size:11px}
-.cp-ring-wrap{display:flex;justify-content:center;margin:10px 0}
-.cp-ready-box{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);border-radius:10px;padding:10px;text-align:center}
-.cp-ready-icon{font-size:26px}
-.cp-ready-text{color:var(--green);font-weight:700;font-size:13px;margin-top:4px}
-.cp-divider{height:1px;background:rgba(255,255,255,0.05);margin:10px 0}
-.cp-total-row{display:flex;justify-content:space-between;align-items:center}
-.cp-total-label{color:var(--muted);font-size:12px}
-.cp-total-val{color:var(--gold);font-weight:900;font-size:14px;font-family:'DM Mono',monospace}
-.cp-empty{color:#1e293b;font-size:13px;text-align:center;margin-top:50px}
+/* ── ORDER LIST PANEL ── */
+#listPanel{
+  width:280px;flex-shrink:0;
+  background:var(--s1);
+  border-right:1px solid var(--border2);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+#listTabs{
+  display:flex;overflow-x:auto;padding:10px 10px 0;gap:4px;flex-shrink:0;
+}
+.ltab{
+  padding:5px 12px;border-radius:7px 7px 0 0;
+  border:1px solid transparent;border-bottom:none;
+  font-size:11px;font-weight:700;cursor:pointer;
+  color:var(--text2);background:transparent;
+  font-family:inherit;transition:all .15s;white-space:nowrap;
+}
+.ltab.active{background:var(--s2);color:var(--text);border-color:var(--border2)}
+#listScroll{flex:1;overflow-y:auto;padding:8px}
 
-/* ── Alert Overlay ── */
-#alertOverlay{position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:999;display:none;align-items:center;justify-content:center;animation:fadeIn .2s ease}
-#alertOverlay.show{display:flex}
+.ocard{
+  border-radius:var(--radius);padding:12px 13px;
+  margin-bottom:7px;cursor:pointer;
+  border:1px solid var(--border2);
+  background:var(--s2);
+  transition:all .2s;animation:fadeUp .3s ease;
+  position:relative;overflow:hidden;
+}
+.ocard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.ocard.st-new::before{background:var(--gold)}
+.ocard.st-preparing::before{background:var(--blue)}
+.ocard.st-delayed::before{background:var(--red);animation:delayBlink 1s ease-in-out infinite}
+.ocard.st-ready::before{background:var(--green)}
+.ocard.st-done::before{background:var(--text3)}
+.ocard.st-declined::before{background:#444}
+.ocard:hover{background:var(--s3);transform:translateX(2px)}
+.ocard.sel{background:var(--s3);border-color:rgba(240,165,0,.3)}
+.ocard.glowing{animation:glow 1.8s ease-in-out infinite,fadeUp .3s ease}
+.oc-row1{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.oc-name{font-weight:700;font-size:13px;line-height:1.2}
+.oc-id{font-size:10px;color:var(--text2);margin-top:1px}
+.tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.oc-row2{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.oc-amt{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--gold)}
+.oc-meta{font-size:10px;color:var(--text2)}
+.oc-eta-bar{margin-top:7px;height:3px;border-radius:3px;background:var(--s1);overflow:hidden}
+.oc-eta-fill{height:100%;border-radius:3px;transition:width 1s linear}
+.delay-badge{
+  font-size:9px;font-weight:800;background:rgba(224,82,82,.15);
+  color:var(--red);border:1px solid rgba(224,82,82,.3);
+  padding:1px 7px;border-radius:10px;animation:delayBlink 1s ease-in-out infinite;
+}
+
+/* ── DETAIL PANEL ── */
+#detailPanel{
+  flex:1;overflow-y:auto;
+  background:var(--bg);
+  display:flex;flex-direction:column;
+}
+#detailWrap{padding:20px;max-width:580px;width:100%;margin:0 auto;animation:fadeUp .3s ease}
+.dempty{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;color:var(--text3);gap:10px;padding:40px;
+}
+.dempty-icon{font-size:48px;opacity:.3}
+.dempty-txt{font-size:14px;font-weight:600}
+
+.det-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:12px}
+.det-id{font-size:26px;font-weight:900;color:var(--gold);font-family:'JetBrains Mono',monospace;letter-spacing:-1px}
+.det-cus{font-size:14px;color:var(--text2);margin-top:2px}
+
+/* Timer arc */
+.arc-wrap{position:relative;width:80px;height:80px;flex-shrink:0}
+.arc-wrap svg{transform:rotate(-90deg)}
+.arc-track{fill:none;stroke:var(--s3);stroke-width:5}
+.arc-prog{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .5s}
+.arc-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.arc-time{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.arc-lbl{font-size:8px;color:var(--text2);font-weight:700;letter-spacing:.5px;margin-top:1px}
+
+.det-section{
+  background:var(--s1);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:15px;margin-bottom:12px;
+}
+.det-sec-title{
+  font-size:10px;font-weight:800;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--text2);margin-bottom:12px;
+}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.info-cell{background:var(--s2);border-radius:9px;padding:9px 11px;border:1px solid var(--border)}
+.info-cell-lbl{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--text2);text-transform:uppercase;margin-bottom:2px}
+.info-cell-val{font-size:13px;font-weight:700}
+
+.item-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px;background:var(--s2);border-radius:9px;
+  margin-bottom:5px;border:1px solid var(--border);
+}
+.item-qty{
+  width:22px;height:22px;border-radius:6px;
+  background:rgba(240,165,0,.15);color:var(--gold);
+  font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;margin-right:9px;flex-shrink:0;
+}
+.item-name{color:#c8d0e8;font-size:13px;flex:1}
+.item-price{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)}
+.total-row{display:flex;justify-content:space-between;align-items:center;padding-top:10px;margin-top:6px;border-top:1px solid var(--border2)}
+.total-lbl{color:var(--text2);font-size:13px;font-weight:600}
+.total-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;color:var(--gold)}
+
+.note-box{
+  background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);
+  border-radius:10px;padding:10px 13px;margin-bottom:12px;
+}
+.note-lbl{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--gold2);text-transform:uppercase;margin-bottom:3px}
+.note-txt{font-size:13px;color:#c8d0e8}
+
+.delay-alert{
+  background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.3);
+  border-radius:10px;padding:11px 14px;margin-bottom:12px;
+  display:flex;align-items:center;gap:10px;
+}
+.delay-icon{font-size:20px;animation:delayBlink 1s ease-in-out infinite}
+.delay-txt{font-size:13px;color:var(--red);font-weight:700}
+.delay-sub{font-size:11px;color:var(--text2);font-weight:500}
+
+.eta-info-box{
+  background:rgba(59,158,221,.07);border:1px solid rgba(59,158,221,.2);
+  border-radius:10px;padding:10px 13px;margin-bottom:12px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.eta-lbl-s{font-size:9px;color:var(--blue);font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px}
+.eta-val-s{font-size:13px;color:#c8d0e8}
+.eta-badge{font-size:11px;color:var(--blue);font-weight:800;background:rgba(59,158,221,.1);padding:3px 9px;border-radius:20px}
+
+/* Action buttons */
+.action-area{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap}
+.abtn{
+  flex:1;border:none;border-radius:11px;padding:13px 16px;
+  font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;
+  transition:all .15s;min-width:120px;
+}
+.abtn:hover{transform:scale(1.02)}
+.abtn-ready{background:linear-gradient(135deg,#34c97b,#16a34a);color:#fff;box-shadow:0 3px 14px rgba(52,201,123,.3)}
+.abtn-done{background:linear-gradient(135deg,#3b9edd,#1d6fa8);color:#fff;box-shadow:0 3px 14px rgba(59,158,221,.3)}
+
+/* ══ HORIZONTAL TIME PICKER ══ */
+.tp-section{
+  background:var(--s1);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:14px 15px;margin-bottom:12px;
+}
+.tp-title{
+  font-size:10px;font-weight:800;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--text2);margin-bottom:4px;
+}
+.tp-subtitle{font-size:11px;color:var(--text2);margin-bottom:12px}
+/* chalkboard track */
+.tp-track{
+  background:#0a1a10;border:1px solid #1a3520;
+  border-radius:10px;padding:8px;
+  display:flex;gap:6px;overflow-x:auto;
+  scrollbar-width:none;
+}
+.tp-track::-webkit-scrollbar{display:none}
+.tp-chip{
+  flex-shrink:0;
+  background:#0d2018;border:1.5px solid #1f4530;
+  color:#4a8f60;border-radius:8px;
+  padding:8px 14px;
+  font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;
+  cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  position:relative;
+}
+.tp-chip::before{
+  content:'';position:absolute;inset:0;border-radius:7px;
+  background:repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(255,255,255,.015) 18px,rgba(255,255,255,.015) 19px);
+  pointer-events:none;
+}
+.tp-chip:hover{background:#102818;border-color:#2a6040;color:#6ab880}
+.tp-chip.sel{
+  background:linear-gradient(135deg,#1a4a2a,#0f3018);
+  border-color:#34c97b;color:#34c97b;
+  box-shadow:0 0 16px rgba(52,201,123,.25);
+}
+.tp-chip-min{font-size:15px;font-weight:800}
+.tp-chip-lbl{font-size:8px;letter-spacing:.8px;opacity:.6;font-family:'Baloo 2',sans-serif}
+.tp-preview{
+  margin-top:10px;padding:9px 13px;border-radius:9px;
+  background:rgba(52,201,123,.07);border:1px solid rgba(52,201,123,.2);
+  display:none;
+}
+.tp-preview.on{display:flex;align-items:center;justify-content:space-between}
+.tp-prev-lbl{font-size:12px;color:var(--text2)}
+.tp-prev-val{font-size:14px;font-weight:800;color:var(--green);font-family:'JetBrains Mono',monospace}
+
+/* ── CUSTOMER PANEL ── */
+#custPanel{
+  width:260px;flex-shrink:0;
+  background:var(--s1);
+  border-left:1px solid var(--border2);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.cust-header{
+  padding:13px 15px 10px;
+  border-bottom:1px solid var(--border2);flex-shrink:0;
+}
+.cust-title{font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--green);text-transform:uppercase}
+.cust-sub{font-size:10px;color:var(--text3);margin-top:2px}
+#custList{flex:1;overflow-y:auto;padding:10px}
+.cust-empty{color:var(--text3);font-size:12px;text-align:center;padding:40px 20px}
+
+.ccard{
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:12px;padding:13px;margin-bottom:10px;
+  animation:fadeUp .3s ease;
+}
+.cc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.cc-name{font-weight:700;font-size:13px}
+.cc-id{font-size:10px;color:var(--text2);margin-top:1px}
+/* mini arc */
+.mini-arc-wrap{position:relative;width:66px;height:66px;flex-shrink:0;margin:0 auto 8px}
+.mini-arc-wrap svg{transform:rotate(-90deg)}
+.mini-arc-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mini-arc-time{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700}
+.mini-arc-lbl{font-size:7px;color:var(--text2);margin-top:1px}
+.cc-ready-box{
+  background:rgba(52,201,123,.08);border:1px solid rgba(52,201,123,.25);
+  border-radius:9px;padding:9px;text-align:center;margin-bottom:8px;
+}
+.cc-ready-icon{font-size:22px}
+.cc-ready-txt{color:var(--green);font-weight:800;font-size:12px;margin-top:2px}
+.cc-delay-box{
+  background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.25);
+  border-radius:9px;padding:9px;text-align:center;margin-bottom:8px;
+  animation:ripple 1.5s ease-in-out infinite;
+}
+.cc-delay-txt{color:var(--red);font-weight:800;font-size:11px;animation:delayBlink 1s ease-in-out infinite}
+.cc-div{height:1px;background:var(--border);margin:8px 0}
+.cc-total{display:flex;justify-content:space-between;align-items:center}
+.cc-total-lbl{font-size:11px;color:var(--text2)}
+.cc-total-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--gold)}
+
+/* ══ ALERT ══ */
+#alertOverlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:900;
+  display:none;align-items:center;justify-content:center;
+  animation:fadeUp .2s ease;padding:20px;
+}
+#alertOverlay.on{display:flex}
 #alertBox{
-  background:#0d1528;border:2px solid var(--gold);border-radius:22px;
-  padding:28px;width:360px;max-width:94vw;
-  box-shadow:0 0 70px rgba(245,158,11,.28);
-  animation:ringIn .3s ease;
+  background:var(--s1);border:1.5px solid var(--gold);
+  border-radius:20px;width:100%;max-width:380px;
+  box-shadow:0 0 60px rgba(240,165,0,.2);
+  animation:slideUp .3s ease;overflow:hidden;
 }
-#alertBox.shake{animation:shake .5s ease}
-.alert-bell{text-align:center;margin-bottom:18px}
-.alert-bell-icon{font-size:52px;display:inline-block}
-.alert-bell-icon.ring{animation:bellRing .55s ease-in-out infinite}
-.alert-title{color:var(--gold);font-size:21px;font-weight:900;margin-top:8px}
-.alert-sub{color:#94a3b8;font-size:13px;margin-top:3px}
-.alert-items{background:rgba(255,255,255,0.04);border-radius:12px;padding:12px 14px;margin-bottom:14px}
-.alert-item-row{display:flex;justify-content:space-between;color:#cbd5e1;font-size:13px;margin-bottom:4px}
-.alert-item-row:last-child{margin-bottom:0}
-.alert-divider{height:1px;background:rgba(255,255,255,0.07);margin:8px 0}
-.alert-total-row{display:flex;justify-content:space-between;color:var(--gold);font-weight:900;font-size:15px}
-.alert-note{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.22);border-radius:9px;padding:8px 12px;margin-bottom:14px;color:#fbbf24;font-size:12px;display:none}
-.alert-btns{display:flex;gap:10px}
-.alert-decline{flex:1;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--red);border-radius:10px;padding:11px 0;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;transition:all .15s}
-.alert-decline:hover{background:rgba(248,113,113,.2)}
-.alert-accept{flex:2;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#000;border-radius:10px;padding:11px 0;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;transition:transform .15s}
-.alert-accept:hover{transform:scale(1.03)}
+.abox-top{padding:22px 22px 16px;text-align:center;border-bottom:1px solid var(--border2)}
+.abell{font-size:44px;display:inline-block}
+.abell.ring{animation:bellSwing .7s ease-in-out infinite}
+.atitle{font-size:20px;font-weight:900;color:var(--gold);margin-top:6px}
+.asub{font-size:12px;color:var(--text2);margin-top:2px}
 
-/* ── Time Picker ── */
-#timePicker{display:none;flex-direction:column}
-#timePicker.show{display:flex}
-#alertStep1{display:flex;flex-direction:column}
-#alertStep1.hide{display:none}
-.tp-title{color:var(--text);font-size:16px;font-weight:700;margin-bottom:5px}
-.tp-sub{color:var(--muted);font-size:12px;margin-bottom:16px}
-.tp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
-.tp-btn{
-  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
-  color:#cbd5e1;border-radius:10px;padding:12px 0;font-weight:700;font-size:15px;
-  cursor:pointer;font-family:inherit;transition:all .15s;
+.abox-body{padding:16px 22px}
+.aitem-list{background:var(--s2);border-radius:10px;padding:12px 13px;margin-bottom:12px;border:1px solid var(--border2)}
+.aitem-row{display:flex;justify-content:space-between;color:#c8d0e8;font-size:13px;margin-bottom:4px}
+.aitem-row:last-child{margin-bottom:0}
+.a-divider{height:1px;background:var(--border2);margin:8px 0}
+.atotal-row{display:flex;justify-content:space-between;font-weight:800;font-size:15px}
+.anote{
+  background:rgba(240,165,0,.07);border:1px solid rgba(240,165,0,.2);
+  border-radius:9px;padding:8px 12px;margin-bottom:12px;
+  font-size:12px;color:var(--gold2);display:none;
 }
-.tp-btn:hover{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3)}
-.tp-btn.selected{background:linear-gradient(135deg,#f59e0b,#d97706);border-color:var(--gold);color:#000}
-.tp-preview{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.22);border-radius:9px;padding:8px 14px;margin-bottom:14px;color:var(--green);font-size:12px;text-align:center;display:none}
-.tp-preview.show{display:block}
-.tp-btns{display:flex;gap:10px}
-.tp-back{flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:var(--muted);border-radius:10px;padding:11px 0;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}
-.tp-back:hover{border-color:rgba(255,255,255,.2)}
-.tp-confirm{flex:2;background:rgba(255,255,255,0.05);border:none;color:#334155;border-radius:10px;padding:11px 0;font-weight:900;font-size:14px;cursor:not-allowed;font-family:inherit;transition:all .15s}
-.tp-confirm.active{background:linear-gradient(135deg,#4ade80,#16a34a);color:#000;cursor:pointer}
-.tp-confirm.active:hover{transform:scale(1.02)}
+.abtns{display:flex;gap:8px}
+.abtn-dec{
+  flex:1;background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.25);
+  color:var(--red);border-radius:10px;padding:11px;font-weight:700;
+  font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s;
+}
+.abtn-dec:hover{background:rgba(224,82,82,.2)}
+.abtn-acc{
+  flex:2;background:linear-gradient(135deg,#f0a500,#e07000);
+  border:none;color:#fff;border-radius:10px;padding:11px;
+  font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s;
+}
+.abtn-acc:hover{transform:scale(1.03)}
 
-/* ── Toast ── */
+/* ── Time picker in alert (horizontal chalkboard) ── */
+.abox-tp{padding:16px 22px;display:none;border-top:1px solid var(--border2)}
+.abox-tp.on{display:block}
+.abox-step1-btns{display:flex;gap:8px;padding:16px 22px;border-top:1px solid var(--border2)}
+.atp-track{
+  background:#080f0a;border:1px solid #162210;border-radius:10px;
+  padding:8px;display:flex;gap:6px;overflow-x:auto;margin-top:10px;
+  scrollbar-width:none;
+}
+.atp-track::-webkit-scrollbar{display:none}
+.atp-chip{
+  flex-shrink:0;background:#0a1a0f;border:1.5px solid #1a3520;
+  color:#3d7050;border-radius:8px;padding:9px 14px;
+  font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;
+  cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.atp-chip:hover{border-color:#2a5038;color:#55a070}
+.atp-chip.sel{background:#0f2818;border-color:var(--green);color:var(--green);box-shadow:0 0 14px rgba(52,201,123,.2)}
+.atp-chip-m{font-size:16px;font-weight:800}
+.atp-chip-l{font-size:8px;opacity:.6;font-family:'Baloo 2',sans-serif}
+.atp-prev{
+  margin-top:10px;padding:9px 13px;border-radius:9px;
+  background:rgba(52,201,123,.06);border:1px solid rgba(52,201,123,.18);
+  display:none;justify-content:space-between;align-items:center;
+}
+.atp-prev.on{display:flex}
+.atp-prev-l{font-size:12px;color:var(--text2)}
+.atp-prev-v{font-size:14px;font-weight:800;color:var(--green)}
+.atp-confirm-row{display:flex;gap:8px;margin-top:12px}
+.atp-back{
+  flex:1;background:transparent;border:1px solid var(--border2);
+  color:var(--text2);border-radius:10px;padding:11px;
+  font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s;
+}
+.atp-back:hover{border-color:var(--border2);background:var(--s2)}
+.atp-ok{
+  flex:2;background:var(--s3);border:none;color:var(--text3);
+  border-radius:10px;padding:11px;font-weight:800;font-size:13px;
+  cursor:not-allowed;font-family:inherit;transition:all .15s;
+}
+.atp-ok.on{background:linear-gradient(135deg,#34c97b,#16a34a);color:#fff;cursor:pointer;box-shadow:0 3px 14px rgba(52,201,123,.3)}
+.atp-ok.on:hover{transform:scale(1.02)}
+
+/* ── TOAST ── */
 #toast{
-  position:fixed;bottom:26px;left:50%;transform:translateX(-50%);
-  background:#0f172a;border:1px solid rgba(245,158,11,.5);
-  color:var(--gold);padding:10px 26px;border-radius:30px;
-  font-size:13px;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,.6);
-  z-index:100;display:none;animation:slideDown .3s ease;white-space:nowrap;
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--s1);border:1px solid rgba(240,165,0,.4);
+  color:var(--gold);padding:10px 24px;border-radius:30px;
+  font-size:13px;font-weight:700;
+  box-shadow:0 6px 28px rgba(0,0,0,.5);
+  z-index:999;display:none;animation:slideUp .3s ease;white-space:nowrap;
 }
-#toast.err{border-color:rgba(248,113,113,.5);color:var(--red)}
-#toast.show{display:block}
+#toast.err{border-color:rgba(224,82,82,.4);color:var(--red)}
+#toast.on{display:block}
 
-/* ── SVG Ring ── */
-.ring-svg{transform:rotate(-90deg)}
-.ring-track{fill:none;stroke:rgba(255,255,255,.07);stroke-width:5}
-.ring-prog{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .5s ease}
-.ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.ring-time{font-weight:800;font-size:15px;font-family:'DM Mono',monospace}
-.ring-sub{color:var(--muted);font-size:9px;font-weight:700;margin-top:1px}
+/* ════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════ */
+/* PC default: 3 panels */
+/* Tablet (≤900px): hide customer panel, show in overlay/tab */
+@media(max-width:900px){
+  #custPanel{display:none}
+  #listPanel{width:240px}
+}
+/* Mobile (≤600px): full single column with bottom tabs */
+@media(max-width:600px){
+  html,body{overflow:auto}
+  #app{height:auto;min-height:100vh;overflow:auto}
+  #main{flex-direction:column;overflow:visible;height:auto}
+  #listPanel{width:100%;border-right:none;border-bottom:1px solid var(--border2);max-height:none;overflow:visible}
+  #listScroll{max-height:none;overflow:visible;height:auto}
+  #detailPanel{overflow:visible}
+  #detailWrap{padding:14px}
+  #custPanel{display:flex;width:100%;border-left:none;border-top:1px solid var(--border2)}
+  #topbar{padding:0 12px;height:54px}
+  .brand-name{font-size:15px}
+  #clock{display:none}
+  .stat-pill{padding:8px 14px}
+  .info-grid{grid-template-columns:1fr 1fr}
+  .action-area{flex-direction:column}
+  .abtn{min-width:0}
+  .abox-step1-btns{padding:12px 16px}
+  #alertBox{max-width:100%}
+}
+@media(max-width:380px){
+  .brand-sub{display:none}
+  #testBtn{font-size:11px;padding:7px 10px}
+}
 </style>
 </head>
 <body>
+<div id="app">
 
-<!-- ══ HEADER ══ -->
-<div id="header">
-  <div class="logo">
-    <div class="logo-icon">🏪</div>
-    <div>
-      <div class="logo-title">दुकान ऑर्डर पैनल</div>
-      <div class="logo-sub">लाइव ऑर्डर मैनेजमेंट</div>
+  <!-- ══ TOPBAR ══ -->
+  <div id="topbar">
+    <div class="brand">
+      <div class="brand-logo">🏪</div>
+      <div>
+        <div class="brand-name">ऑर्डर डैशबोर्ड</div>
+        <div class="brand-sub">LIVE KITCHEN PANEL</div>
+      </div>
+      <div id="newBadge">0</div>
     </div>
-    <div id="newBadge">0</div>
+    <div class="topbar-right">
+      <div id="clock">--:--:--</div>
+      <button id="testBtn" onclick="simulateOrder()">🔔 Test ऑर्डर</button>
+    </div>
   </div>
-  <button id="testBtn" onclick="simulateOrder()">🔔 नया ऑर्डर (Test)</button>
-</div>
 
-<!-- ══ STATS ══ -->
-<div id="statsBar">
-  <div class="stat"><div class="stat-num" id="s-new" style="color:#f59e0b">0</div><div class="stat-label">नया</div></div>
-  <div class="stat"><div class="stat-num" id="s-prep" style="color:#38bdf8">0</div><div class="stat-label">बन रहा</div></div>
-  <div class="stat"><div class="stat-num" id="s-ready" style="color:#4ade80">0</div><div class="stat-label">तैयार</div></div>
-  <div class="stat"><div class="stat-num" id="s-done" style="color:#475569">0</div><div class="stat-label">पूरा</div></div>
-</div>
-
-<!-- ══ BODY ══ -->
-<div id="body">
-  <div id="orderList"></div>
-  <div id="detail"><div class="detail-empty" id="detail-empty">कोई ऑर्डर चुनें 👆</div><div id="detail-inner" style="display:none"></div></div>
-  <div id="customerPanel">
-    <div id="cp-header"><div class="cp-title">📱 ग्राहक पैनल</div><div class="cp-sub">लाइव दिखता है ग्राहक को</div></div>
-    <div id="cp-list"><div class="cp-empty" id="cp-empty">कोई सक्रिय ऑर्डर नहीं</div></div>
+  <!-- ══ STATS BAR ══ -->
+  <div id="statsBar">
+    <div class="stat-pill active" onclick="filterOrders('all',this)">
+      <div class="stat-dot" style="background:#8892b0"></div>
+      <div class="stat-info">
+        <div class="stat-num" id="sAll">0</div>
+        <div class="stat-lbl">सभी</div>
+      </div>
+    </div>
+    <div class="stat-pill" onclick="filterOrders('new',this)">
+      <div class="stat-dot" style="background:#f0a500"></div>
+      <div class="stat-info">
+        <div class="stat-num" id="sNew" style="color:#f0a500">0</div>
+        <div class="stat-lbl">नया</div>
+      </div>
+    </div>
+    <div class="stat-pill" onclick="filterOrders('preparing',this)">
+      <div class="stat-dot" style="background:#3b9edd"></div>
+      <div class="stat-info">
+        <div class="stat-num" id="sPre" style="color:#3b9edd">0</div>
+        <div class="stat-lbl">बन रहा</div>
+      </div>
+    </div>
+    <div class="stat-pill" onclick="filterOrders('delayed',this)">
+      <div class="stat-dot" style="background:#e05252;animation:delayBlink 1s ease-in-out infinite"></div>
+      <div class="stat-info">
+        <div class="stat-num" id="sDel" style="color:#e05252">0</div>
+        <div class="stat-lbl">देरी</div>
+      </div>
+    </div>
+    <div class="stat-pill" onclick="filterOrders('ready',this)">
+      <div class="stat-dot" style="background:#34c97b"></div>
+      <div class="stat-info">
+        <div class="stat-num" id="sRdy" style="color:#34c97b">0</div>
+        <div class="stat-lbl">तैयार</div>
+      </div>
+    </div>
+    <div class="stat-pill" onclick="filterOrders('done',this)">
+      <div class="stat-dot" style="background:#3d4663"></div>
+      <div class="stat-info">
+        <div class="stat-num" id="sDone" style="color:#3d4663">0</div>
+        <div class="stat-lbl">पूरा</div>
+      </div>
+    </div>
   </div>
-</div>
 
-<!-- ══ ALERT OVERLAY ══ -->
+  <!-- ══ MAIN ══ -->
+  <div id="main">
+
+    <!-- Order List Panel -->
+    <div id="listPanel">
+      <div id="listTabs">
+        <button class="ltab active" onclick="filterOrders('all',null,this)">सभी</button>
+        <button class="ltab" onclick="filterOrders('new',null,this)">🔔 नया</button>
+        <button class="ltab" onclick="filterOrders('preparing',null,this)">👨‍🍳 बन रहा</button>
+        <button class="ltab" onclick="filterOrders('delayed',null,this)">⚠️ देरी</button>
+        <button class="ltab" onclick="filterOrders('ready',null,this)">✅ तैयार</button>
+        <button class="ltab" onclick="filterOrders('done',null,this)">📦 पूरा</button>
+      </div>
+      <div id="listScroll"></div>
+    </div>
+
+    <!-- Detail Panel -->
+    <div id="detailPanel">
+      <div class="dempty" id="dempty">
+        <div class="dempty-icon">📋</div>
+        <div class="dempty-txt">कोई ऑर्डर चुनें</div>
+      </div>
+      <div id="detailWrap" style="display:none"></div>
+    </div>
+
+    <!-- Customer Panel -->
+    <div id="custPanel">
+      <div class="cust-header">
+        <div class="cust-title">📱 ग्राहक व्यू</div>
+        <div class="cust-sub">लाइव स्टेटस</div>
+      </div>
+      <div id="custList"></div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ══ ALERT ══ -->
 <div id="alertOverlay">
   <div id="alertBox">
-    <!-- Step 1: Alert -->
+    <!-- Step 1 -->
     <div id="alertStep1">
-      <div class="alert-bell">
-        <span class="alert-bell-icon ring" id="bellIcon">🔔</span>
-        <div class="alert-title">नया ऑर्डर आया!</div>
-        <div class="alert-sub" id="alertSub">—</div>
+      <div class="abox-top">
+        <div class="abell ring" id="aBell">🔔</div>
+        <div class="atitle">नया ऑर्डर आया!</div>
+        <div class="asub" id="aSub"></div>
       </div>
-      <div class="alert-items" id="alertItems"></div>
-      <div class="alert-note" id="alertNote"></div>
-      <div class="alert-btns">
-        <button class="alert-decline" onclick="declineOrder()">❌ रद्द करें</button>
-        <button class="alert-accept" onclick="goPickTime()">स्वीकार करें →</button>
+      <div class="abox-body">
+        <div class="aitem-list" id="aItems"></div>
+        <div class="anote" id="aNote"></div>
+      </div>
+      <div class="abox-step1-btns">
+        <button class="abtn-dec" onclick="declineOrder()">❌ रद्द</button>
+        <button class="abtn-acc" onclick="goTP()">स्वीकार → समय चुनें</button>
       </div>
     </div>
     <!-- Step 2: Time Picker -->
-    <div id="timePicker">
-      <div class="tp-title">⏱ समय चुनें</div>
-      <div class="tp-sub">ऑर्डर तैयार होने में कितना समय लगेगा? (ग्राहक को +5 मिनट दिखेगा)</div>
-      <div class="tp-grid" id="tpGrid"></div>
-      <div class="tp-preview" id="tpPreview"></div>
-      <div class="tp-btns">
-        <button class="tp-back" onclick="goAlert()">← वापस</button>
-        <button class="tp-confirm" id="tpConfirmBtn" onclick="confirmAccept()">कन्फर्म करें ✓</button>
+    <div id="alertTP">
+      <div class="abox-body">
+        <div style="font-size:15px;font-weight:800;margin-bottom:3px">⏱ समय चुनें</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:0">कितने मिनट में तैयार होगा? (ग्राहक को +5 मिनट ज़्यादा दिखेगा)</div>
+        <div class="atp-track" id="atpTrack"></div>
+        <div class="atp-prev" id="atpPrev">
+          <span class="atp-prev-l">ग्राहक को दिखेगा</span>
+          <span class="atp-prev-v" id="atpPrevVal"></span>
+        </div>
+        <div class="atp-confirm-row">
+          <button class="atp-back" onclick="goStep1()">← वापस</button>
+          <button class="atp-ok" id="atpOk" onclick="confirmOrder()">कन्फर्म करें ✓</button>
+        </div>
       </div>
     </div>
   </div>
@@ -261,314 +644,467 @@ body{font-family:'Noto Sans',sans-serif;background:var(--bg);color:var(--text);m
 <div id="toast"></div>
 
 <script>
-// ─── State ────────────────────────────────────────────────────────────────────
-const TIME_OPTIONS = [10,15,20,25,30,45];
-let orders = [
-  {id:'ORD-001',customer:'Rahul Sharma',avatar:'RS',phone:'98765-43210',ts:Date.now()-70000,address:'टेबल 4',status:'new',items:[{name:'पनीर बटर मसाला',qty:2,price:280},{name:'बटर नान',qty:4,price:45}],total:740,note:'Extra मक्खन',etaSec:null,acceptedAt:null},
-  {id:'ORD-002',customer:'Priya Gupta',avatar:'PG',phone:'87654-32109',ts:Date.now()-320000,address:'होम डिलीवरी',status:'preparing',items:[{name:'चिकन बिरयानी',qty:1,price:320},{name:'रायता',qty:1,price:60}],total:380,note:'',etaSec:25*60,acceptedAt:Date.now()-130000},
-];
-let alertQueue=[];
-let selectedId=orders[0].id;
-let selectedTime=null;
-let audioCtx=null;
-let bellTimer=null;
-let raf=null;
-let orderCounter=3;
-
-const STATUS={
-  new:     {label:'नया ऑर्डर', color:'#f59e0b',bg:'rgba(245,158,11,.12)',icon:'🔔'},
-  preparing:{label:'बन रहा है',color:'#38bdf8',bg:'rgba(56,189,248,.12)',icon:'👨‍🍳'},
-  ready:   {label:'तैयार है',  color:'#4ade80',bg:'rgba(74,222,128,.12)',icon:'✅'},
-  done:    {label:'पूरा हुआ', color:'#64748b',bg:'rgba(100,116,139,.1)', icon:'📦'},
-  declined:{label:'रद्द',     color:'#f87171',bg:'rgba(248,113,113,.1)', icon:'❌'},
+/* ─── CONFIG ─────────────────────────────────────── */
+const TIME_OPTS = [5,10,15,20,25,30,40,45,60];
+const STATUS_MAP = {
+  new:      {lbl:'नया ऑर्डर', col:'#f0a500', bg:'rgba(240,165,0,.12)',   icon:'🔔'},
+  preparing:{lbl:'बन रहा है', col:'#3b9edd', bg:'rgba(59,158,221,.12)',  icon:'👨‍🍳'},
+  delayed:  {lbl:'देरी हो रही',col:'#e05252',bg:'rgba(224,82,82,.12)',   icon:'⚠️'},
+  ready:    {lbl:'तैयार है',  col:'#34c97b', bg:'rgba(52,201,123,.12)',  icon:'✅'},
+  done:     {lbl:'पूरा हुआ', col:'#3d4663', bg:'rgba(61,70,99,.15)',    icon:'📦'},
+  declined: {lbl:'रद्द',     col:'#555',    bg:'rgba(80,80,80,.1)',     icon:'❌'},
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt=(n)=>'₹'+Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');
-const pad=(n)=>String(n).padStart(2,'0');
-function countdown(sec){if(sec<=0)return'00:00';return`${pad(Math.floor(sec/60))}:${pad(sec%60)}`}
-function timeAgo(ts){
-  const s=Math.floor((Date.now()-ts)/1000);
-  if(s<10)return'अभी';if(s<60)return`${s} सेकंड पहले`;
-  if(s<3600)return`${Math.floor(s/60)} मिनट पहले`;return`${Math.floor(s/3600)} घंटे पहले`;
+/* ─── STATE ──────────────────────────────────────── */
+let orders = [
+  mk('ORD-001','Rahul Sharma','RS','98765-43210','टेबल 4','new',
+    [{n:'पनीर बटर मसाला',q:2,p:280},{n:'बटर नान',q:4,p:45}],740,'Extra मक्खन',null,null),
+  mk('ORD-002','Priya Gupta','PG','87654-32109','होम डिलीवरी','preparing',
+    [{n:'चिकन बिरयानी',q:1,p:320},{n:'रायता',q:1,p:60}],380,'',25*60,Date.now()-140000),
+  mk('ORD-003','Amit Verma','AV','90001-23456','टेबल 9','done',
+    [{n:'दाल मखनी',q:1,p:220},{n:'रोटी',q:3,p:30}],310,'',null,null),
+];
+let alertQ=[], selId=orders[0].id, selTimeMin=null, curFilter='all', oc=4;
+let bellIv=null, audioCtx=null;
+
+function mk(id,customer,av,phone,address,status,items,total,note,etaSec,acceptedAt){
+  return {id,customer,av,phone,address,status,items,total,note,etaSec,acceptedAt,ts:Date.now()-Math.random()*600000};
 }
 
-// ─── Audio ────────────────────────────────────────────────────────────────────
+/* ─── HELPERS ────────────────────────────────────── */
+const R = n=>'₹'+Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const pad = n=>String(n).padStart(2,'0');
+const cd = s=>{if(s<=0)return'00:00';return`${pad(Math.floor(s/60))}:${pad(s%60)}`};
+function ago(ts){
+  const s=Math.floor((Date.now()-ts)/1000);
+  if(s<10)return'अभी';if(s<60)return`${s}s पहले`;
+  if(s<3600)return`${Math.floor(s/60)}m पहले`;return`${Math.floor(s/3600)}h पहले`;
+}
+function rem(o){
+  if(!o.etaSec||!o.acceptedAt)return null;
+  return Math.max(0,o.etaSec-Math.floor((Date.now()-o.acceptedAt)/1000));
+}
+function isDelayed(o){
+  return (o.status==='preparing')&&o.etaSec&&o.acceptedAt&&
+    (Date.now()-o.acceptedAt)>o.etaSec*1000;
+}
+function effectiveStatus(o){
+  if(o.status==='preparing'&&isDelayed(o))return'delayed';
+  return o.status;
+}
+
+/* ─── AUDIO ─────────────────────────────────────── */
 function bell(){
   try{
     if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     const o=audioCtx.createOscillator(),g=audioCtx.createGain();
     o.connect(g);g.connect(audioCtx.destination);
-    o.type='sine';o.frequency.setValueAtTime(900,audioCtx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(440,audioCtx.currentTime+.45);
-    g.gain.setValueAtTime(.55,audioCtx.currentTime);
+    o.type='sine';o.frequency.setValueAtTime(880,audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(440,audioCtx.currentTime+.4);
+    g.gain.setValueAtTime(.5,audioCtx.currentTime);
     g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.6);
-    o.start();o.stop(audioCtx.currentTime+.6);
+    o.start();o.stop(audioCtx.currentTime+.7);
   }catch(e){}
 }
 
-// ─── Order Card ───────────────────────────────────────────────────────────────
-function buildOrderCard(o){
-  const cfg=STATUS[o.status];
-  const isNew=o.status==='new';
-  const rem=o.etaSec&&o.acceptedAt?Math.max(0,o.etaSec-Math.floor((Date.now()-o.acceptedAt)/1000)):null;
-  let right='';
-  if(o.status==='preparing'&&rem!==null)
-    right=`<span class="oc-eta" style="color:${rem<120?'#f87171':'#38bdf8'}">⏱ ${countdown(rem)}</span>`;
-  else if(o.status==='ready')
-    right=`<span class="oc-eta" style="color:#4ade80">✅ तैयार!</span>`;
-  else
-    right=`<span class="oc-time">${timeAgo(o.ts)}</span>`;
-
-  const sel=selectedId===o.id?' selected':'';
-  const nw=isNew?' is-new':'';
-  return `<div class="order-card${sel}${nw}" onclick="selectOrder('${o.id}')">
-    <div class="oc-top">
-      <div><div class="oc-name">${o.customer}</div><div class="oc-sub">${o.id} • ${o.address}</div></div>
-      <span class="badge" style="background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.color}33">${cfg.icon} ${cfg.label}</span>
-    </div>
-    <div class="oc-bot"><span class="oc-total">${fmt(o.total)}</span>${right}</div>
-  </div>`;
+/* ─── CLOCK ─────────────────────────────────────── */
+function updateClock(){
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
 }
 
-// ─── SVG Ring ─────────────────────────────────────────────────────────────────
-function buildRing(totalSec,remSec){
-  const r=38,circ=2*Math.PI*r;
-  const pct=totalSec>0?Math.max(0,remSec/totalSec):0;
+/* ─── SVG ARC ────────────────────────────────────── */
+function arc(total,remaining,r,sw){
+  const circ=2*Math.PI*r;
+  const pct=total>0?Math.max(0,remaining/total):0;
   const off=circ*(1-pct);
-  const col=pct>.5?'#4ade80':pct>.2?'#f59e0b':'#f87171';
-  return `<div style="position:relative;width:90px;height:90px">
-    <svg width="90" height="90" class="ring-svg">
-      <circle class="ring-track" cx="45" cy="45" r="${r}"/>
-      <circle class="ring-prog" cx="45" cy="45" r="${r}" stroke="${col}"
-        stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>
-    </svg>
-    <div class="ring-label">
-      <span class="ring-time" style="color:${col}">${countdown(remSec)}</span>
-      <span class="ring-sub">बचा</span>
-    </div>
-  </div>`;
+  const col=isNaN(remaining)||remaining===null?'#3b9edd':
+    pct>.5?'#34c97b':pct>.2?'#f0a500':'#e05252';
+  const size=(r+sw)*2+2;
+  const c=r+sw+1;
+  return {html:`<svg width="${size}" height="${size}" class="arc-wrap" style="display:block">
+    <circle class="arc-track" cx="${c}" cy="${c}" r="${r}" stroke-width="${sw}"/>
+    <circle class="arc-prog" cx="${c}" cy="${c}" r="${r}" stroke="${col}"
+      stroke-width="${sw}" stroke-dasharray="${circ.toFixed(2)}"
+      stroke-dashoffset="${off.toFixed(2)}"/>
+  </svg>`,col};
 }
 
-// ─── Detail Panel ─────────────────────────────────────────────────────────────
-function buildDetail(o){
-  if(!o)return;
-  document.getElementById('detail-empty').style.display='none';
-  const d=document.getElementById('detail-inner');
-  d.style.display='block';
-  const cfg=STATUS[o.status];
-  const rem=o.etaSec&&o.acceptedAt?Math.max(0,o.etaSec-Math.floor((Date.now()-o.acceptedAt)/1000)):null;
+/* ─── FILTER ─────────────────────────────────────── */
+function filterOrders(f,statEl,tabEl){
+  curFilter=f;
+  // Update stat pills
+  if(statEl){document.querySelectorAll('.stat-pill').forEach(p=>p.classList.remove('active'));statEl.classList.add('active');}
+  // Update list tabs
+  if(tabEl){document.querySelectorAll('.ltab').forEach(t=>t.classList.remove('active'));tabEl.classList.add('active');}
+  renderList();
+}
 
-  let timerHTML='';
-  if(o.status==='preparing'&&rem!==null) timerHTML=buildRing(o.etaSec,rem);
-  else if(o.status==='ready') timerHTML=`<div style="text-align:center"><div style="font-size:38px">🎉</div><div style="color:#4ade80;font-weight:700;font-size:12px;margin-top:4px">READY!</div></div>`;
-
-  let itemsHTML='';
-  o.items.forEach(it=>{
-    itemsHTML+=`<div class="item-row">
-      <div style="display:flex;align-items:center">
-        <div class="item-qty">${it.qty}</div>
-        <span class="item-name">${it.name}</span>
-      </div>
-      <span class="item-price">${fmt(it.price*it.qty)}</span>
-    </div>`;
+/* ─── RENDER LIST ─────────────────────────────────── */
+function renderList(){
+  const filtered=orders.filter(o=>{
+    if(curFilter==='all')return true;
+    if(curFilter==='delayed')return effectiveStatus(o)==='delayed';
+    return o.status===curFilter;
   });
 
-  const noteHTML=o.note?`<div class="note-box"><div class="note-title">📝 ग्राहक नोट</div><div class="note-text">${o.note}</div></div>`:'';
-  const etaHTML=o.etaSec?`<div class="eta-box"><div><div class="eta-label">ETA (ग्राहक को)</div><div class="eta-info">${Math.floor(o.etaSec/60)} मिनट दिखाया गया</div></div><div class="eta-tag">+5 मिनट जोड़ा ✓</div></div>`:'';
+  const el=document.getElementById('listScroll');
+  if(!filtered.length){el.innerHTML=`<div style="color:var(--text3);text-align:center;padding:30px 16px;font-size:13px">यहाँ कोई ऑर्डर नहीं</div>`;return;}
+
+  el.innerHTML=filtered.map(o=>{
+    const es=effectiveStatus(o);
+    const cfg=STATUS_MAP[es]||STATUS_MAP.new;
+    const r=rem(o);
+    const isSel=o.id===selId;
+    const isGlow=o.status==='new';
+
+    let meta='';
+    if(es==='preparing'){
+      meta=`<span class="oc-eta" style="color:#3b9edd;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700">⏱${cd(r)}</span>`;
+    } else if(es==='delayed'){
+      meta=`<span class="delay-badge">⚠️ देरी</span>`;
+    } else if(es==='ready'){
+      meta=`<span style="color:#34c97b;font-size:10px;font-weight:800">✅ तैयार!</span>`;
+    } else {
+      meta=`<span class="oc-meta">${ago(o.ts)}</span>`;
+    }
+
+    let etaBar='';
+    if((es==='preparing'||es==='delayed')&&o.etaSec&&r!==null){
+      const pct=Math.max(0,r/o.etaSec)*100;
+      const bc=es==='delayed'?'#e05252':pct>50?'#34c97b':pct>20?'#f0a500':'#e05252';
+      etaBar=`<div class="oc-eta-bar"><div class="oc-eta-fill" style="width:${pct}%;background:${bc}"></div></div>`;
+    }
+
+    return `<div class="ocard st-${es}${isSel?' sel':''}${isGlow?' glowing':''}" onclick="selectOrder('${o.id}')">
+      <div class="oc-row1">
+        <div>
+          <div class="oc-name">${o.customer}</div>
+          <div class="oc-id">${o.id} · ${o.address}</div>
+        </div>
+        <span class="tag" style="background:${cfg.bg};color:${cfg.col};border:1px solid ${cfg.col}30">${cfg.icon} ${cfg.lbl}</span>
+      </div>
+      <div class="oc-row2">
+        <span class="oc-amt">${R(o.total)}</span>
+        ${meta}
+      </div>
+      ${etaBar}
+    </div>`;
+  }).join('');
+}
+
+/* ─── RENDER DETAIL ──────────────────────────────── */
+function renderDetail(){
+  const o=orders.find(x=>x.id===selId);
+  const empty=document.getElementById('dempty');
+  const wrap=document.getElementById('detailWrap');
+  if(!o){empty.style.display='flex';wrap.style.display='none';return;}
+  empty.style.display='none';wrap.style.display='block';
+
+  const es=effectiveStatus(o);
+  const cfg=STATUS_MAP[es]||STATUS_MAP.new;
+  const r=rem(o);
+  const delayed=es==='delayed';
+
+  // Arc
+  let arcHTML='';
+  if(o.status==='preparing'||o.status==='ready'){
+    if(o.etaSec&&o.acceptedAt&&o.status==='preparing'){
+      const {html:svgH,col}=arc(o.etaSec,delayed?0:r,33,5);
+      arcHTML=`<div class="arc-wrap">
+        ${svgH.replace('class="arc-wrap" ','').replace(/svg/g,'svg').replace('<svg','<svg style="position:absolute;inset:0"').replace('display:block','width:80px;height:80px')}
+        <div class="arc-inner" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span class="arc-time" style="color:${delayed?'#e05252':col}">${delayed?'00:00':cd(r)}</span>
+          <span class="arc-lbl">${delayed?'DELAY':'बचा'}</span>
+        </div>
+      </div>`;
+    } else if(o.status==='ready'){
+      arcHTML=`<div style="text-align:center;flex-shrink:0"><div style="font-size:36px">🎉</div><div style="color:var(--green);font-size:10px;font-weight:800;margin-top:2px">READY</div></div>`;
+    }
+  }
+
+  let itemsHTML=o.items.map(it=>`
+    <div class="item-row">
+      <div style="display:flex;align-items:center;flex:1">
+        <div class="item-qty">${it.q}</div>
+        <span class="item-name">${it.n}</span>
+      </div>
+      <span class="item-price">${R(it.p*it.q)}</span>
+    </div>`).join('');
+
+  const noteHTML=o.note?`<div class="note-box"><div class="note-lbl">📝 ग्राहक नोट</div><div class="note-txt">${o.note}</div></div>`:'';
+
+  const delayHTML=delayed?`<div class="delay-alert">
+    <span class="delay-icon">⚠️</span>
+    <div>
+      <div class="delay-txt">समय पूरा हो गया!</div>
+      <div class="delay-sub">जब तैयार हो, "तैयार है" दबाएं</div>
+    </div>
+  </div>`:'';
+
+  const etaHTML=o.etaSec&&o.acceptedAt&&o.status==='preparing'?`<div class="eta-info-box">
+    <div><div class="eta-lbl-s">ETA ग्राहक को</div><div class="eta-val-s">${Math.floor(o.etaSec/60)} मिनट दिया गया</div></div>
+    <span class="eta-badge">+5 min added ✓</span>
+  </div>`:'';
+
+  // Time picker (always shown when preparing - to change if needed)
+  let tpHTML='';
+  if(o.status==='preparing'||o.status==='new'){
+    const chips=TIME_OPTS.map(t=>`
+      <div class="tp-chip${o._selMin===t?' sel':''}" onclick="changeTime('${o.id}',${t},this)">
+        <span class="tp-chip-min">${t}</span>
+        <span class="tp-chip-lbl">MIN</span>
+      </div>`).join('');
+    tpHTML=`<div class="tp-section">
+      <div class="tp-title">⏱ समय बदलें</div>
+      <div class="tp-subtitle">नया समय चुनें (ग्राहक को +5 मिनट ज़्यादा दिखेगा)</div>
+      <div class="tp-track">${chips}</div>
+      <div class="tp-preview${o._selMin?' on':''}" id="detTP">
+        <span class="tp-prev-lbl">ग्राहक को दिखेगा</span>
+        <span class="tp-prev-val">${o._selMin?(o._selMin+5)+' मिनट':''}</span>
+      </div>
+    </div>`;
+  }
 
   let actionHTML='';
-  if(o.status==='preparing') actionHTML=`<button class="action-btn btn-ready" onclick="markReady('${o.id}')">✅ तैयार है - ग्राहक को बताएं</button>`;
-  else if(o.status==='ready') actionHTML=`<button class="action-btn btn-done" onclick="markDone('${o.id}')">📦 डिलीवर किया</button>`;
-
-  d.innerHTML=`
-    <div class="detail-header">
-      <div><div class="detail-label">ऑर्डर</div><div class="detail-id">${o.id}</div></div>
-      <span class="badge" style="background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.color}44;font-size:13px;padding:7px 16px">${cfg.icon} ${cfg.label}</span>
-    </div>
-    <div class="detail-box">
-      <div class="detail-box-title">ग्राहक जानकारी</div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-weight:700;font-size:15px">${o.customer}</div>
-          <div style="color:var(--muted);font-size:12px;margin-top:2px">${o.address}</div>
-          <div style="color:var(--muted);font-size:12px">📞 ${o.phone}</div>
-        </div>
-        ${timerHTML}
-      </div>
-    </div>
-    <div class="detail-box">
-      <div class="detail-box-title">आइटम</div>
-      ${itemsHTML}
-      <div class="divider"></div>
-      <div class="total-row"><span class="total-label">कुल राशि</span><span class="total-val">${fmt(o.total)}</span></div>
-    </div>
-    ${noteHTML}${etaHTML}${actionHTML}`;
-}
-
-// ─── Customer Panel ───────────────────────────────────────────────────────────
-function buildCustomerPanel(){
-  const active=orders.filter(o=>['preparing','ready'].includes(o.status));
-  const cp=document.getElementById('cp-list');
-  const empty=document.getElementById('cp-empty');
-  if(active.length===0){cp.innerHTML='<div class="cp-empty">कोई सक्रिय ऑर्डर नहीं</div>';return;}
-  let html='';
-  active.forEach(o=>{
-    const cfg=STATUS[o.status];
-    const rem=o.etaSec&&o.acceptedAt?Math.max(0,o.etaSec-Math.floor((Date.now()-o.acceptedAt)/1000)):0;
-    let mid='';
-    if(o.status==='preparing'&&o.etaSec) mid=`<div class="cp-ring-wrap">${buildRing(o.etaSec,rem)}</div>`;
-    else if(o.status==='ready') mid=`<div class="cp-ready-box"><div class="cp-ready-icon">🎉</div><div class="cp-ready-text">आपका ऑर्डर तैयार है!</div></div>`;
-    html+=`<div class="cp-card">
-      <div class="cp-top">
-        <div><div class="cp-name">${o.customer}</div><div class="cp-id">${o.id}</div></div>
-        <span class="badge" style="background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.color}33">${cfg.icon} ${cfg.label}</span>
-      </div>
-      ${mid}
-      <div class="cp-divider"></div>
-      <div class="cp-total-row"><span class="cp-total-label">कुल राशि</span><span class="cp-total-val">${fmt(o.total)}</span></div>
+  if(o.status==='preparing'||delayed){
+    actionHTML=`<div class="action-area">
+      <button class="abtn abtn-ready" onclick="markReady('${o.id}')">✅ तैयार है — ग्राहक को बताएं</button>
     </div>`;
-  });
-  cp.innerHTML=html;
-}
-
-// ─── Stats ────────────────────────────────────────────────────────────────────
-function updateStats(){
-  ['new','preparing','ready','done'].forEach(s=>{
-    const ids={new:'s-new',preparing:'s-prep',ready:'s-ready',done:'s-done'};
-    document.getElementById(ids[s]).textContent=orders.filter(o=>o.status===s).length;
-  });
-  const n=orders.filter(o=>o.status==='new').length;
-  const b=document.getElementById('newBadge');
-  b.textContent=n; b.classList.toggle('show',n>0);
-}
-
-// ─── Render All ───────────────────────────────────────────────────────────────
-function render(){
-  // Order list
-  document.getElementById('orderList').innerHTML=orders.map(buildOrderCard).join('');
-  // Detail
-  const sel=orders.find(o=>o.id===selectedId);
-  if(sel) buildDetail(sel);
-  else{document.getElementById('detail-empty').style.display='flex';document.getElementById('detail-inner').style.display='none';}
-  buildCustomerPanel();
-  updateStats();
-}
-
-// ─── Alert Queue ──────────────────────────────────────────────────────────────
-function showNextAlert(){
-  if(alertQueue.length===0){
-    document.getElementById('alertOverlay').classList.remove('show');
-    clearInterval(bellTimer);bellTimer=null;return;
+  } else if(o.status==='ready'){
+    actionHTML=`<div class="action-area">
+      <button class="abtn abtn-done" onclick="markDone('${o.id}')">📦 डिलीवर हो गया</button>
+    </div>`;
   }
-  const o=alertQueue[0];
-  document.getElementById('alertOverlay').classList.add('show');
-  document.getElementById('alertStep1').classList.remove('hide');
-  document.getElementById('timePicker').classList.remove('show');
-  document.getElementById('alertSub').textContent=`${o.id} • ${o.customer}`;
-  let itemsHTML='';
-  o.items.forEach(it=>{itemsHTML+=`<div class="alert-item-row"><span>${it.qty}× ${it.name}</span><span>${fmt(it.price*it.qty)}</span></div>`;});
-  itemsHTML+=`<div class="alert-divider"></div><div class="alert-total-row"><span>कुल</span><span>${fmt(o.total)}</span></div>`;
-  document.getElementById('alertItems').innerHTML=itemsHTML;
-  const noteEl=document.getElementById('alertNote');
-  if(o.note){noteEl.textContent='📝 '+o.note;noteEl.style.display='block';}else{noteEl.style.display='none';}
-  // Bell ring
-  clearInterval(bellTimer);
-  bell();
-  bellTimer=setInterval(bell,2600);
-  // Shake box
-  const box=document.getElementById('alertBox');
-  box.classList.remove('shake');void box.offsetWidth;box.classList.add('shake');
+
+  wrap.innerHTML=`
+    <div class="det-header">
+      <div>
+        <div style="font-size:10px;color:var(--text2);font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px">ऑर्डर</div>
+        <div class="det-id">${o.id}</div>
+        <div class="det-cus">${o.customer}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+        <span class="tag" style="background:${cfg.bg};color:${cfg.col};border:1px solid ${cfg.col}35;font-size:12px;padding:5px 13px">${cfg.icon} ${cfg.lbl}</span>
+        ${arcHTML}
+      </div>
+    </div>
+    <div class="det-section">
+      <div class="det-sec-title">ग्राहक जानकारी</div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-cell-lbl">नाम</div><div class="info-cell-val">${o.customer}</div></div>
+        <div class="info-cell"><div class="info-cell-lbl">पता</div><div class="info-cell-val">${o.address}</div></div>
+        <div class="info-cell"><div class="info-cell-lbl">फोन</div><div class="info-cell-val" style="font-family:'JetBrains Mono'">${o.phone}</div></div>
+        <div class="info-cell"><div class="info-cell-lbl">ऑर्डर ID</div><div class="info-cell-val" style="color:var(--gold)">${o.id}</div></div>
+      </div>
+    </div>
+    <div class="det-section">
+      <div class="det-sec-title">आइटम</div>
+      ${itemsHTML}
+      <div class="total-row"><span class="total-lbl">कुल राशि</span><span class="total-val">${R(o.total)}</span></div>
+    </div>
+    ${noteHTML}${delayHTML}${etaHTML}${tpHTML}${actionHTML}`;
 }
 
-function goPickTime(){
-  document.getElementById('alertStep1').classList.add('hide');
-  document.getElementById('timePicker').classList.add('show');
-  selectedTime=null;
-  // Build grid
-  let g='';
-  TIME_OPTIONS.forEach(t=>{g+=`<button class="tp-btn" onclick="pickTime(${t},this)">${t} मिनट</button>`;});
-  document.getElementById('tpGrid').innerHTML=g;
-  document.getElementById('tpPreview').classList.remove('show');
-  document.getElementById('tpConfirmBtn').classList.remove('active');
+/* ─── RENDER CUSTOMER PANEL ──────────────────────── */
+function renderCust(){
+  const active=orders.filter(o=>['preparing','ready'].includes(o.status)&&o.status!=='done');
+  const el=document.getElementById('custList');
+  if(!active.length){el.innerHTML=`<div class="cust-empty">📭<br>कोई सक्रिय ऑर्डर नहीं</div>`;return;}
+  el.innerHTML=active.map(o=>{
+    const es=effectiveStatus(o);
+    const cfg=STATUS_MAP[es]||STATUS_MAP.preparing;
+    const r=rem(o);
+    const delayed=es==='delayed';
+    let midHTML='';
+    if(o.status==='preparing'&&!delayed&&o.etaSec){
+      const {html:svgH,col}=arc(o.etaSec,r,27,4.5);
+      const size=62;
+      midHTML=`<div style="display:flex;justify-content:center;margin:8px 0">
+        <div style="position:relative;width:${size}px;height:${size}px">
+          <svg width="${size}" height="${size}" style="position:absolute;inset:0;transform:rotate(-90deg)">
+            <circle fill="none" stroke="var(--s3)" stroke-width="4.5" cx="${size/2}" cy="${size/2}" r="27"/>
+            <circle fill="none" stroke="${col}" stroke-width="4.5" stroke-linecap="round"
+              cx="${size/2}" cy="${size/2}" r="27"
+              stroke-dasharray="${(2*Math.PI*27).toFixed(2)}"
+              stroke-dashoffset="${((1-(r/o.etaSec))*2*Math.PI*27).toFixed(2)}"
+              style="transition:stroke-dashoffset 1s linear"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:${col}">${cd(r)}</span>
+            <span style="font-size:7px;color:var(--text2);margin-top:1px">बचा</span>
+          </div>
+        </div>
+      </div>`;
+    } else if(delayed){
+      midHTML=`<div class="cc-delay-box"><div style="font-size:20px">⚠️</div><div class="cc-delay-txt">देरी हो रही है...</div></div>`;
+    } else if(o.status==='ready'){
+      midHTML=`<div class="cc-ready-box"><div class="cc-ready-icon">🎉</div><div class="cc-ready-txt">आपका ऑर्डर तैयार है!</div></div>`;
+    }
+    return `<div class="ccard">
+      <div class="cc-top">
+        <div><div class="cc-name">${o.customer}</div><div class="cc-id">${o.id}</div></div>
+        <span class="tag" style="background:${cfg.bg};color:${cfg.col};border:1px solid ${cfg.col}30;font-size:9px">${cfg.icon} ${cfg.lbl}</span>
+      </div>
+      ${midHTML}
+      <div class="cc-div"></div>
+      <div class="cc-total"><span class="cc-total-lbl">कुल</span><span class="cc-total-val">${R(o.total)}</span></div>
+    </div>`;
+  }).join('');
 }
 
-function pickTime(min,el){
-  selectedTime=min;
-  document.querySelectorAll('.tp-btn').forEach(b=>b.classList.remove('selected'));
-  el.classList.add('selected');
-  const prev=document.getElementById('tpPreview');
-  prev.innerHTML=`✅ ग्राहक को दिखेगा: <strong>${min+5} मिनट</strong>`;
-  prev.classList.add('show');
-  document.getElementById('tpConfirmBtn').classList.add('active');
+/* ─── RENDER STATS ───────────────────────────────── */
+function renderStats(){
+  const total=orders.length;
+  const nw=orders.filter(o=>o.status==='new').length;
+  const pr=orders.filter(o=>o.status==='preparing'&&!isDelayed(o)).length;
+  const dl=orders.filter(o=>isDelayed(o)).length;
+  const rd=orders.filter(o=>o.status==='ready').length;
+  const dn=orders.filter(o=>o.status==='done').length;
+  document.getElementById('sAll').textContent=total;
+  document.getElementById('sNew').textContent=nw;
+  document.getElementById('sPre').textContent=pr;
+  document.getElementById('sDel').textContent=dl;
+  document.getElementById('sRdy').textContent=rd;
+  document.getElementById('sDone').textContent=dn;
+  const b=document.getElementById('newBadge');
+  b.textContent=nw;b.classList.toggle('on',nw>0);
 }
 
-function goAlert(){
-  document.getElementById('timePicker').classList.remove('show');
-  document.getElementById('alertStep1').classList.remove('hide');
+/* ─── FULL RENDER ────────────────────────────────── */
+function render(){renderStats();renderList();renderDetail();renderCust();}
+
+/* ─── ACTIONS ────────────────────────────────────── */
+function selectOrder(id){selId=id;render();}
+function markReady(id){
+  orders=orders.map(o=>o.id===id?{...o,status:'ready'}:o);
+  toast('🎉 ऑर्डर तैयार है! ग्राहक को सूचित करें।');render();
+}
+function markDone(id){
+  orders=orders.map(o=>o.id===id?{...o,status:'done'}:o);
+  toast('📦 ऑर्डर डिलीवर हो गया!');render();
+}
+function changeTime(id,min,el){
+  orders=orders.map(o=>{
+    if(o.id!==id)return o;
+    return {...o,_selMin:min,etaSec:(min+5)*60,acceptedAt:Date.now()};
+  });
+  // update chips highlight without full re-render for smoothness
+  el.closest('.tp-track').querySelectorAll('.tp-chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  const prev=document.getElementById('detTP');
+  if(prev){prev.className='tp-preview on';prev.querySelector('.tp-prev-val').textContent=(min+5)+' मिनट';}
+  toast(`⏱ समय अपडेट: ग्राहक को ${min+5} मिनट दिखेगा`);
+  renderStats();renderList();renderCust();
 }
 
-function confirmAccept(){
-  if(!selectedTime)return;
-  const o=alertQueue.shift();
-  const customerEta=(selectedTime+5)*60;
-  orders=orders.map(x=>x.id===o.id?{...x,status:'preparing',etaSec:customerEta,acceptedAt:Date.now()}:x);
-  selectedId=o.id;
-  showToast(`✅ ऑर्डर ${o.id} स्वीकार! ग्राहक को ${selectedTime+5} मिनट दिखेगा।`);
-  clearInterval(bellTimer);bellTimer=null;
-  render();
-  showNextAlert();
+/* ─── ALERT ──────────────────────────────────────── */
+function showAlert(){
+  if(!alertQ.length){hideAlert();return;}
+  const o=alertQ[0];
+  document.getElementById('alertOverlay').classList.add('on');
+  document.getElementById('alertStep1').style.display='';
+  document.getElementById('alertTP').style.display='none';
+  document.getElementById('aSub').textContent=`${o.id} · ${o.customer} · ${o.address}`;
+  let iH=o.items.map(it=>`<div class="aitem-row"><span>${it.q}× ${it.n}</span><span>${R(it.p*it.q)}</span></div>`).join('');
+  iH+=`<div class="a-divider"></div><div class="atotal-row"><span>कुल</span><span style="color:var(--gold)">${R(o.total)}</span></div>`;
+  document.getElementById('aItems').innerHTML=iH;
+  const an=document.getElementById('aNote');
+  if(o.note){an.textContent='📝 '+o.note;an.style.display='block';}else{an.style.display='none';}
+  // shake
+  const ab=document.getElementById('alertBox');
+  ab.style.animation='none';void ab.offsetWidth;ab.style.animation='shake .5s ease,slideUp .3s ease';
+  clearInterval(bellIv);bell();bellIv=setInterval(bell,2600);
 }
-
+function hideAlert(){
+  document.getElementById('alertOverlay').classList.remove('on');
+  clearInterval(bellIv);bellIv=null;
+}
+function goTP(){
+  document.getElementById('alertStep1').style.display='none';
+  const tp=document.getElementById('alertTP');
+  tp.style.display='';
+  selTimeMin=null;
+  document.getElementById('atpTrack').innerHTML=TIME_OPTS.map(t=>`
+    <div class="atp-chip" onclick="pickAlertTime(${t},this)">
+      <span class="atp-chip-m">${t}</span>
+      <span class="atp-chip-l">मिनट</span>
+    </div>`).join('');
+  document.getElementById('atpPrev').classList.remove('on');
+  document.getElementById('atpOk').className='atp-ok';
+}
+function pickAlertTime(min,el){
+  selTimeMin=min;
+  document.querySelectorAll('.atp-chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('atpPrevVal').textContent=(min+5)+' मिनट';
+  document.getElementById('atpPrev').classList.add('on');
+  document.getElementById('atpOk').className='atp-ok on';
+}
+function goStep1(){
+  document.getElementById('alertTP').style.display='none';
+  document.getElementById('alertStep1').style.display='';
+}
+function confirmOrder(){
+  if(!selTimeMin)return;
+  const o=alertQ.shift();
+  const eta=(selTimeMin+5)*60;
+  orders=orders.map(x=>x.id===o.id?{...x,status:'preparing',etaSec:eta,acceptedAt:Date.now(),_selMin:selTimeMin}:x);
+  selId=o.id;
+  toast(`✅ ऑर्डर ${o.id} स्वीकार! ग्राहक को ${selTimeMin+5} मिनट दिखाया।`);
+  hideAlert();render();
+  if(alertQ.length)setTimeout(showAlert,600);
+}
 function declineOrder(){
-  const o=alertQueue.shift();
+  const o=alertQ.shift();
   orders=orders.map(x=>x.id===o.id?{...x,status:'declined'}:x);
-  showToast('❌ ऑर्डर रद्द किया','err');
-  clearInterval(bellTimer);bellTimer=null;
-  render();
-  showNextAlert();
+  toast('❌ ऑर्डर रद्द किया','err');
+  hideAlert();render();
+  if(alertQ.length)setTimeout(showAlert,600);
 }
 
-// ─── Actions ──────────────────────────────────────────────────────────────────
-function selectOrder(id){selectedId=id;render();}
-function markReady(id){orders=orders.map(o=>o.id===id?{...o,status:'ready'}:o);showToast('🎉 ऑर्डर तैयार है! ग्राहक को सूचित किया।');render();}
-function markDone(id){orders=orders.map(o=>o.id===id?{...o,status:'done'}:o);showToast('📦 ऑर्डर डिलीवर हो गया!');render();}
-
-// ─── Simulate Order ───────────────────────────────────────────────────────────
-const NAMES=[['Amit Verma','AV'],['Sunita Rao','SR'],['Vikram Singh','VS'],['Meena Joshi','MJ'],['Deepak Kumar','DK']];
-const MENU_SETS=[
-  [{name:'दाल मखनी',qty:1,price:220},{name:'जीरा राइस',qty:1,price:150}],
-  [{name:'चिकन करी',qty:2,price:280},{name:'रोटी',qty:4,price:30}],
-  [{name:'पाव भाजी',qty:2,price:120},{name:'लस्सी',qty:2,price:80}],
-  [{name:'राजमा चावल',qty:1,price:180},{name:'पापड़',qty:2,price:20}],
+/* ─── SIMULATE ───────────────────────────────────── */
+const NAMES=[['Sunita Rao','SR','87001-11111'],['Vikram Singh','VS','96002-22222'],
+  ['Meena Joshi','MJ','80003-33333'],['Deepak Kumar','DK','99004-44444'],
+  ['Kavita Sharma','KS','88005-55555'],['Rajesh Gupta','RG','77006-66666']];
+const MENUS=[
+  [{n:'दाल मखनी',q:1,p:220},{n:'जीरा राइस',q:1,p:150}],
+  [{n:'चिकन करी',q:2,p:280},{n:'रोटी',q:4,p:30}],
+  [{n:'पाव भाजी',q:2,p:120},{n:'लस्सी',q:2,p:80}],
+  [{n:'राजमा चावल',q:1,p:180},{n:'पापड़',q:2,p:20}],
+  [{n:'पनीर टिक्का',q:1,p:320},{n:'बटर नान',q:2,p:45}],
 ];
+const NOTES=['कम मसाला','ज़्यादा मक्खन','कम नमक','','','Extra चटनी'];
 function simulateOrder(){
-  const [name,av]=NAMES[Math.floor(Math.random()*NAMES.length)];
-  const items=MENU_SETS[Math.floor(Math.random()*MENU_SETS.length)];
-  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
-  const id='ORD-'+String(orderCounter++).padStart(3,'0');
-  const o={id,customer:name,avatar:av,phone:'9'+Math.floor(100000000+Math.random()*900000000),
-    ts:Date.now(),address:`टेबल ${Math.floor(Math.random()*12)+1}`,status:'new',
-    items,total,note:Math.random()>.55?'कम मसाला डालें':'',etaSec:null,acceptedAt:null};
+  const [name,av,phone]=NAMES[Math.floor(Math.random()*NAMES.length)];
+  const items=MENUS[Math.floor(Math.random()*MENUS.length)];
+  const total=items.reduce((s,i)=>s+i.p*i.q,0);
+  const id='ORD-'+String(oc++).padStart(3,'0');
+  const o={id,customer:name,av,phone,address:`टेबल ${Math.floor(Math.random()*14)+1}`,
+    status:'new',items,total,note:NOTES[Math.floor(Math.random()*NOTES.length)],
+    etaSec:null,acceptedAt:null,ts:Date.now(),_selMin:null};
   orders=[o,...orders];
-  alertQueue.push(o);
-  if(alertQueue.length===1)showNextAlert();
+  alertQ.push(o);
+  if(alertQ.length===1)showAlert();
   render();
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
-let toastTimer=null;
-function showToast(msg,type='ok'){
+/* ─── TOAST ─────────────────────────────────────── */
+let toastT=null;
+function toast(msg,type='ok'){
   const t=document.getElementById('toast');
-  t.textContent=msg;t.className='show'+(type==='err'?' err':'');
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='',3200);
+  t.textContent=msg;t.className='on'+(type==='err'?' err':'');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.className='',3500);
 }
 
-// ─── Live tick ────────────────────────────────────────────────────────────────
-function tick(){render();raf=requestAnimationFrame(()=>setTimeout(tick,1000));}
+/* ─── LOOP ───────────────────────────────────────── */
+function tick(){updateClock();render();}
+setInterval(tick,1000);
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-render();tick();
+/* ─── INIT ───────────────────────────────────────── */
+render();
 </script>
 </body>
 </html>
+
